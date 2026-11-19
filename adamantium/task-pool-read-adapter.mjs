@@ -123,9 +123,11 @@ export async function readTaskPoolView({
   tasks
  };
  const view=validateOrchestrationView(snapshot);
+ Object.freeze(snapshot.providers[0]); Object.freeze(snapshot.providers);
+ Object.freeze(snapshot.tasks); Object.freeze(snapshot);
  return Object.freeze({
   status:'read-only',source:descriptor.owner,
-  actionContract:'mas-task-provider-1',view,
+  actionContract:'mas-task-provider-1',view,snapshot,
   // Current Task Pool list is capped at 200; upstream store can hold 256.
   // Even a list shorter than 200 cannot prove entire universe is complete.
   partial:true,sourceLimit:200,
