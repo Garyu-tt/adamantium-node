@@ -1,0 +1,29 @@
+name: Adamantium-node mobile signed-release contract
+on:
+  pull_request:
+    paths:
+      - 'adamantium/mobile-release-contract.mjs'
+      - 'test/adamantium/mobile-release-contract.test.mjs'
+      - 'docs/adamantium/ANDROID-THIN-CLIENT-R02.md'
+      - '.github/workflows/adamantium-mobile-release.yml'
+  push:
+    branches:
+      - 'architecture/android-thin-runtime-r02'
+    paths:
+      - 'adamantium/mobile-release-contract.mjs'
+      - 'test/adamantium/mobile-release-contract.test.mjs'
+      - '.github/workflows/adamantium-mobile-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-release-inert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify release authenticity and anti-rollback
+        run: node --test test/adamantium/mobile-release-contract.test.mjs
