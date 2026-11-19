@@ -1,0 +1,28 @@
+name: Adamantium-node isolated projection tests
+on:
+  pull_request:
+    paths:
+      - 'adamantium/**'
+      - 'test/adamantium/**'
+      - '.github/workflows/adamantium-projection.yml'
+  push:
+    branches:
+      - 'architecture/adamantium-node-foundation-r01'
+    paths:
+      - 'adamantium/**'
+      - 'test/adamantium/**'
+      - '.github/workflows/adamantium-projection.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  projection:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify inert projection contracts
+        run: node --test test/adamantium/editor-projection.test.mjs
