@@ -1,0 +1,53 @@
+name: Adamantium Factory R05 Durable Journal and G0
+on:
+  push:
+    paths:
+      - 'adamantium/node-factory/**'
+      - 'test/adamantium/node-factory-ledger*'
+      - '.github/workflows/adamantium-factory-r05.yml'
+      - 'docs/FACTORY-R05.md'
+  pull_request:
+    paths:
+      - 'adamantium/node-factory/**'
+      - 'test/adamantium/node-factory-ledger*'
+      - '.github/workflows/adamantium-factory-r05.yml'
+      - 'docs/FACTORY-R05.md'
+permissions:
+  contents: read
+jobs:
+  durable-ledger:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: No-dependency journal replay, CAS, hash-chain and G0 preview
+        run: node --test test/adamantium/node-factory-ledger-r05.test.mjs
+  real-verified-durable-proof:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked Node-RED 5 dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Persist genuine disposable Node-RED 5 verification and reopen
+        run: node --test test/adamantium/node-factory-ledger-real-r05.test.mjs
