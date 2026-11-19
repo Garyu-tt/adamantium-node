@@ -71,9 +71,9 @@ export function createReadOnlyProjection(graph) {
     const kind = identifier(node.kind, "node kind");
     const inputs = ports(node, "inputs");
     const outputs = ports(node, "outputs");
-    const record = { id: nodeId, domain, kind, ports: { inputs, outputs } };
-    nodes.set(nodeId, record);
-    return record;
+    const projectionNode = { id: nodeId, domain, kind, ports: { inputs, outputs } };
+    nodes.set(nodeId, projectionNode);
+    return projectionNode;
   });
 
   const edgeIds = new Set();
