@@ -9,7 +9,7 @@ import {fail} from './factory-catalog.mjs';
 
 export async function verifyIsolatedFactory(contract){
  const root=join(tmpdir(),'adamantium-agent-factory-r04-'+randomUUID());
- let running,deployed,restored=false;
+ let running,deployed,restored=false,report;
  try{
   running=await startFactorySandbox({root,contract});
   const {admin,receipt}=running;
@@ -38,7 +38,7 @@ export async function verifyIsolatedFactory(contract){
   if(state.rev!==rollback.to||state.flows.length!==0)
    fail('rollback_readback_mismatch');
   restored=true;
-  return {
+  report={
    schema:'adamantium.factory.verification/1',
    packageName:receipt.packageName,nodeType:receipt.nodeType,
    artifactHashes:receipt.artifactHashes,
@@ -52,14 +52,13 @@ export async function verifyIsolatedFactory(contract){
    signed:false,authorizedForLifecycle:false
   };
  }finally{
-  if(running){
-   // Any unresolved state is abandoned with the disposable process only.
-   // Never retry a network mutation blindly or redirect to the operator profile.
-   await running.close();
-  }
-  await rm(root,{recursive:true,force:true,maxRetries:4,retryDelay:100});
-  if(deployed&&!restored){
-   // No success receipt can escape a failed or ambiguous rollback.
+  try{
+   if(running)await running.close();
+  }finally{
+   // Never promote a receipt if cleanup or process isolation is ambiguous.
+   await rm(root,{recursive:true,force:true,maxRetries:4,retryDelay:100});
   }
  }
+ if(!report||!restored)fail('factory_verification_incomplete');
+ return {...report,sandboxDestroyed:true};
 }
