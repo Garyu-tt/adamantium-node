@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://infracare-it.com/standards/universal-graph/graph-ir-v1.schema.json",
+  "title": "Mechanicus Universal Graph IR v1",
+  "description": "Editor-independent graph definition only. Graph references do not grant privileges, schedule operations, store private state or identify hosts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "schemaVersion",
+    "revision",
+    "domain",
+    "interfacePorts",
+    "nodes",
+    "edges"
+  ],
+  "properties": {
+    "schema": {
+      "const": "mechanicus.universal-graph/1"
+    },
+    "id": {
+      "$ref": "#/$defs/name"
+    },
+    "schemaVersion": {
+      "const": 1
+    },
+    "domain": {
+      "enum": ["general","program","genesis","neural","infrastructure","interface"]
+    },
+    "interfacePorts": {
+      "type": "array",
+      "items": {"$ref":"#/$defs/port"},
+      "maxItems": 4096
+    },
+    "nodes": {
+      "type": "array",
+      "items": {"$ref":"#/$defs/node"},
+      "maxItems": 100000
+    },
+    "edges": {
+      "type": "array",
+      "items": {"$ref":"#/$defs/edge"},
+      "maxItems": 200000
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    }
+  },
+  "$defs": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z][a-z0-9_.-]*$"
+    },
+    "contract": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 256,
+      "pattern": "^[a-z][a-z0-9_.-]*@[1-9][0-9]*$"
+    },
+    "port": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","dataType","direction","semantics"],
+      "properties": {"id":{"$ref":"#/$defs/name"},"dataType":{"$ref":"#/$defs/contract"},"direction":{"enum":["input","output"]},"semantics":{"$ref":"#/$defs/semantics"}}
+    },
+    "semantics": {
+      "enum": ["data","control","event","signal","dependency","permission","route"]
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","kind","typeRef","graphRef","ports","graphRefRevision"],
+      "properties": {"id":{"$ref":"#/$defs/name"},"kind":{"enum":["capability","composite","service","device","sensor","effector","brain-region","resource","view","policy"]},"typeRef":{"type":"string","maxLength":256},"graphRef":{"type":"string","maxLength":128},"ports":{"type":"array","items":{"$ref":"#/$defs/port"},"maxItems":4096},"graphRefRevision":{"type":"integer","minimum":0}},
+      "allOf": [{"if":{"properties":{"kind":{"const":"composite"}}},"then":{"properties":{"typeRef":{"const":""},"graphRef":{"$ref":"#/$defs/name"},"graphRefRevision":{"type":"integer","minimum":1}}},"else":{"properties":{"typeRef":{"$ref":"#/$defs/contract"},"graphRef":{"const":""},"graphRefRevision":{"const":0}}}}]
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id","fromNode","fromPort","toNode","toPort","semantics","delayTicks"],
+      "properties": {"id":{"$ref":"#/$defs/name"},"fromNode":{"$ref":"#/$defs/name"},"fromPort":{"$ref":"#/$defs/name"},"toNode":{"$ref":"#/$defs/name"},"toPort":{"$ref":"#/$defs/name"},"semantics":{"$ref":"#/$defs/semantics"},"delayTicks":{"type":"integer","minimum":0,"maximum":4294967295}}
+    }
+  }
+}
