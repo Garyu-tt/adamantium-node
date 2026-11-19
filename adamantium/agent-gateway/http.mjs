@@ -7,7 +7,7 @@ import {compileNodeRed} from "../node-red-adapter/compile.mjs";
 
 const LIMIT=128*1024;
 const mapError=e=>e.code==="revision_conflict"||e.code==="idempotency_payload_conflict"?
-  409:e.code==="deployment_not_authorized"?403:
+  409:e.code==="deployment_not_authorized"||e.code==="factory_verification_disabled"?403:
   e.code==="graph_not_found"||e.code==="proposal_not_found"?404:
   e.code==="factory_worker_busy"?409:e.code==="factory_verification_quota"?429:422;
 function respond(res,status,body){
