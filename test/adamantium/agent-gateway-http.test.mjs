@@ -57,7 +57,7 @@ test("cross-origin browser mutation and missing token are rejected",async()=>{
     assert.equal(active.status,403);
   }finally{await new Promise(resolve=>server.close(resolve));}
 });
-test("server requires a real token before exposing any mutation endpoint",()=>{
-  assert.throws(()=>startGateway({token:"short",port:0}),
+test("server requires a real token before exposing any mutation endpoint",async()=>{
+  await assert.rejects(startGateway({token:"short",port:0}),
     /explicit_server_token_required/);
 });
