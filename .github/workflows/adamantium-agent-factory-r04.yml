@@ -1,0 +1,59 @@
+name: Adamantium Node Factory R04 Agent Gateway
+on:
+  push:
+    paths:
+      - 'adamantium/agent-gateway/**'
+      - 'adamantium/node-factory/**'
+      - 'adamantium/node-red-adapter/**'
+      - 'adamantium/graph-cli/**'
+      - 'test/adamantium/*r04.test.mjs'
+      - '.github/workflows/adamantium-agent-factory-r04.yml'
+      - 'docs/AGENT-FACTORY-R04.md'
+  pull_request:
+    paths:
+      - 'adamantium/agent-gateway/**'
+      - 'adamantium/node-factory/**'
+      - 'adamantium/node-red-adapter/**'
+      - 'adamantium/graph-cli/**'
+      - 'test/adamantium/*r04.test.mjs'
+      - '.github/workflows/adamantium-agent-factory-r04.yml'
+      - 'docs/AGENT-FACTORY-R04.md'
+permissions:
+  contents: read
+jobs:
+  pure-agent-contract:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Test model, CAS and HTTP safety without npm
+        run: node --test test/adamantium/node-factory-agent-r04.test.mjs test/adamantium/node-factory-gateway-r04.test.mjs
+  real-agent-sandbox:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked Node-RED 5 dependencies without scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Real agent HTTP contract through Node-RED 5 and verified rollback
+        run: node --test test/adamantium/node-factory-real-agent-r04.test.mjs

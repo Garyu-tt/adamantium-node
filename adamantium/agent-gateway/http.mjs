@@ -2,12 +2,14 @@
 // Loopback-only, token-protected agent interface. No Node-RED runtime writes.
 import http from "node:http";
 import {AgentGraphService} from "./service.mjs";
+import {AgentFactoryService} from "./factory-service.mjs";
 import {compileNodeRed} from "../node-red-adapter/compile.mjs";
 
 const LIMIT=128*1024;
 const mapError=e=>e.code==="revision_conflict"||e.code==="idempotency_payload_conflict"?
-  409:e.code==="deployment_not_authorized"?403:
-  e.code==="graph_not_found"?404:422;
+  409:e.code==="deployment_not_authorized"||e.code==="factory_verification_disabled"?403:
+  e.code==="graph_not_found"||e.code==="proposal_not_found"?404:
+  e.code==="factory_worker_busy"?409:e.code==="factory_verification_quota"?429:422;
 function respond(res,status,body){
   res.writeHead(status,{"Content-Type":"application/json; charset=utf-8",
     "Cache-Control":"no-store","X-Content-Type-Options":"nosniff"});
@@ -27,10 +29,11 @@ async function readJSON(req){
   }
 }
 /** Sandbox is a simulated state only. It never issues real Node-RED deploys. */
-export function createGateway({token,sandbox=false}={}){
+export function createGateway({token,sandbox=false,factoryVerify=false,factoryRunner}={}){
   if(typeof token!=="string"||token.length<24||token.length>256)
     throw new TypeError("explicit_server_token_required");
   const service=new AgentGraphService({sandbox});
+  const factory=new AgentFactoryService({verifyEnabled:factoryVerify,runner:factoryRunner});
   const server=http.createServer(async(req,res)=>{
     try{
       if(req.url==="/health"&&req.method==="GET")
@@ -45,6 +48,8 @@ export function createGateway({token,sandbox=false}={}){
         if(req.headers.origin!==localOrigin)
           return respond(res,403,{error:"cross_origin_request_forbidden"});
       }
+      if(req.method==="GET"&&req.url==="/v1/factory")
+        return respond(res,200,factory.inspect());
       if(req.method==="GET"&&req.url==="/v1/graph")
         return respond(res,200,service.inspect());
       if(req.method==="GET"&&req.url==="/v1/node-red/import"){
@@ -62,21 +67,24 @@ export function createGateway({token,sandbox=false}={}){
         typeof payload.arguments!=="object"||payload.arguments===null||
         Array.isArray(payload.arguments))
         return respond(res,400,{error:"invalid_agent_request"});
-      const response=service.invoke(payload.operation,payload.arguments);
+      const response=payload.operation.startsWith("factory.")?
+        await factory.invoke(payload.operation,payload.arguments):
+        service.invoke(payload.operation,payload.arguments);
       respond(res,200,{ok:true,response});
     }catch(e){
       respond(res,e.status||mapError(e),{ok:false,error:e.code||e.message||"invalid_request"});
     }
   });
-  return {server,service};
+  return {server,service,factory};
 }
-export async function startGateway({token,sandbox=false,port=8769}={}){
+export async function startGateway({token,sandbox=false,port=8769,
+ factoryVerify=false,factoryRunner}={}){
   if(!Number.isInteger(port)||port<0||port>65535)
     throw new RangeError("invalid_port");
-  const {server,service}=createGateway({token,sandbox});
+  const {server,service,factory}=createGateway({token,sandbox,factoryVerify,factoryRunner});
   await new Promise((resolve,reject)=>{
     server.once("error",reject);
     server.listen(port,"127.0.0.1",resolve);
   });
-  return {server,service,url:"http://127.0.0.1:"+server.address().port};
+  return {server,service,factory,url:"http://127.0.0.1:"+server.address().port};
 }

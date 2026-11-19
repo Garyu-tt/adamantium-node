@@ -44,10 +44,12 @@ export async function startFactorySandbox({root,contract}){
  const sandboxId='factory-'+randomBytes(16).toString('hex');
  const token=randomBytes(32).toString('base64url');
  const lines=[];
+ const childEnv={...process.env};
+ delete childEnv.ADAMANTIUM_AGENT_API_TOKEN;
  const child=spawn(process.execPath,[entry,'--settings',join(userDir,'settings.js'),
   '--userDir',userDir,'--port',String(port),'--no-telemetry'],{
   cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe'],
-  env:{...process.env,ADAMANTIUM_NODE_SANDBOX_ID:sandboxId,
+  env:{...childEnv,ADAMANTIUM_NODE_SANDBOX_ID:sandboxId,
    ADAMANTIUM_NODE_SANDBOX_TOKEN:token}
  });
  const append=b=>{
