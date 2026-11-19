@@ -40,7 +40,7 @@ test('real fsync journal proposals survive reopen; verify and promotion are advi
   assert.match(first.proposalId,/^candidate-/);
   assert.equal(first.graphPreview.schema,'mechanicus.universal-graph/1');
   assert.equal(first.graphPreview.nodes.length,4);
-  const opened=await DurableFactoryWorkflow.open(x.root);
+  const opened=await DurableFactoryWorkflow.open(x.root,{runner:async c=>mockProof(c)});
   assert.equal((await opened.inspect()).sequence,1);
   assert.equal((await opened.inspect()).proposals[first.proposalId].status,'proposed');
   const proof=await opened.verify({
