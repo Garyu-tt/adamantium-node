@@ -1,0 +1,7 @@
+{
+  "schema": "adamantium.node-factory/1",
+  "id": "demo-uppercase",
+  "label": "Adamantium Demo Uppercase",
+  "transform": "uppercase",
+  "suffix": ""
+}

@@ -1,0 +1,49 @@
+name: Adamantium Node Factory R02
+on:
+  push:
+    paths:
+      - 'adamantium/node-factory/**'
+      - 'test/adamantium/node-factory-*.test.mjs'
+      - 'docs/NODE-FACTORY-R02.md'
+      - '.github/workflows/adamantium-node-factory-r02.yml'
+  pull_request:
+    paths:
+      - 'adamantium/node-factory/**'
+      - 'test/adamantium/node-factory-*.test.mjs'
+      - 'docs/NODE-FACTORY-R02.md'
+      - '.github/workflows/adamantium-node-factory-r02.yml'
+permissions:
+  contents: read
+jobs:
+  offline-package:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Validate contracts, pack and install in isolated palette (offline)
+        run: node --test test/adamantium/node-factory-contract.test.mjs test/adamantium/node-factory-install.test.mjs
+  real-node-red-runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked Node-RED 5 workspace test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Real Node-RED runtime via official node-red-node-test-helper
+        run: node --test test/adamantium/node-factory-real-runtime.test.mjs
