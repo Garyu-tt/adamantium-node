@@ -1,123 +1,112 @@
 /**
- * Adamantium-node R01: inert, read-only editor projection.
+ * Adamantium-node R01: inert read-only projection of Mechanicus Graph IR v1.
+ * Source contract: standards/universal-graph/graph-ir-v1.schema.json
+ * in AdamantiumToolBox (draft G0, PR #143).
  *
- * This does NOT execute a MAS capability, translate native Graph IR in full,
- * grant permissions, or modify the source graph.
+ * This does not execute, authorize, persist or edit a native graph.
  * SPDX-License-Identifier: Apache-2.0
  */
 
 export const PROJECTION_VERSION = "adamantium.editor-projection/0.1";
+export const SOURCE_SCHEMA = "mechanicus.universal-graph/1";
 
-const DRAWABLE = new Set(["data", "control", "event", "signal", "feedback"]);
-const SEMANTIC = new Set(["permission", "network", "dependency", "containment"]);
-const ALL_EDGES = new Set([...DRAWABLE, ...SEMANTIC]);
+const DOMAINS = new Set(["general", "program", "genesis", "neural", "infrastructure", "interface"]);
+const KINDS = new Set(["capability", "composite", "service", "device", "sensor", "effector", "brain-region", "resource", "view", "policy"]);
+const SEMANTICS = new Set(["data", "control", "event", "signal", "dependency", "permission", "route"]);
+const NON_EXECUTABLE = new Set(["dependency", "permission", "route"]);
+const NAME = /^[a-z][a-z0-9_.-]*$/;
+const CONTRACT = /^[a-z][a-z0-9_.-]*@[1-9][0-9]*$/;
 
-function fail(message) {
-  throw new TypeError(`Invalid graph projection: ${message}`);
-}
-
-function record(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-function identifier(value, label) {
-  if (typeof value !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._:\/-]{0,127}$/.test(value)) {
-    fail(`${label} must be a bounded identifier`);
-  }
+function fail(message) { throw new TypeError(`Invalid Graph IR v1 projection: ${message}`); }
+function obj(value) { return value !== null && typeof value === "object" && !Array.isArray(value); }
+function name(value, label) {
+  if (typeof value !== "string" || value.length > 128 || !NAME.test(value)) fail(`invalid ${label}`);
   return value;
 }
-
-function ports(node, direction) {
-  const entries = node.ports?.[direction] ?? [];
-  if (!Array.isArray(entries)) fail(`${node.id}.${direction} must be an array`);
-  const ids = new Set();
-  return entries.map((port) => {
-    if (!record(port)) fail(`invalid port in ${node.id}`);
-    const id = identifier(port.id, "port ID");
-    if (ids.has(id)) fail(`duplicate port ${node.id}.${id}`);
-    ids.add(id);
-    if (typeof port.type !== "string" || !port.type || port.type.length > 128) {
-      fail(`missing typed contract for ${node.id}.${id}`);
-    }
-    return { id, type: port.type };
-  });
+function contract(value, label) {
+  if (typeof value !== "string" || value.length > 256 || !CONTRACT.test(value)) fail(`invalid ${label}`);
+  return value;
+}
+function version(value, label, min=0) {
+  if (!Number.isSafeInteger(value) || value < min) fail(`invalid ${label}`);
+  return value;
+}
+function port(p) {
+  if (!obj(p)) fail("port must be an object");
+  const id=name(p.id,"port.id");
+  const dataType=contract(p.dataType,"port.dataType");
+  if (!["input","output"].includes(p.direction)) fail("port.direction");
+  if (!SEMANTICS.has(p.semantics)) fail("port.semantics");
+  return {id,dataType,direction:p.direction,semantics:p.semantics};
 }
 
-/**
- * Minimal versioned interchange shape used by the R01 projection fixture.
- * The authoritative Universal Graph IR is owned outside this editor.
- * Inputs: {id, revision, nodes:[{id,domain,kind,ports}], edges:[{id,kind,from,to,delayTicks?}]}.
- * Endpoint: {nodeId,portId}. No arbitrary metadata is copied into the UI.
- */
+/** Read-only projection. Validate source with its canonical JSON Schema and
+ * native C++17 compiler before treating it as a trusted IR revision. */
 export function createReadOnlyProjection(graph) {
-  if (!record(graph)) fail("graph must be an object");
-  const id = identifier(graph.id, "graph ID");
-  if (!Number.isSafeInteger(graph.revision) || graph.revision < 0) {
-    fail("revision must be a nonnegative integer");
+  if (!obj(graph) || graph.schema !== SOURCE_SCHEMA || graph.schemaVersion !== 1) fail("unsupported source schema");
+  const id = name(graph.id,"graph.id");
+  version(graph.revision,"graph.revision",1);
+  if (!DOMAINS.has(graph.domain)) fail("graph.domain");
+  if (!Array.isArray(graph.interfacePorts) || !Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) {
+    fail("interfacePorts/nodes/edges must be arrays");
   }
-  if (!Array.isArray(graph.nodes) || !Array.isArray(graph.edges)) {
-    fail("nodes and edges must be arrays");
-  }
-  if (graph.nodes.length > 100000 || graph.edges.length > 200000) {
+  if (graph.interfacePorts.length > 4096 || graph.nodes.length > 100000 || graph.edges.length > 200000) {
     fail("projection size budget exceeded");
   }
-
+  const interfacePorts=graph.interfacePorts.map(port);
   const nodes = new Map();
-  const renderNodes = graph.nodes.map((node) => {
-    if (!record(node)) fail("node must be an object");
-    const nodeId = identifier(node.id, "node ID");
-    if (nodes.has(nodeId)) fail(`duplicate node: ${nodeId}`);
-    const domain = identifier(node.domain, "node domain");
-    const kind = identifier(node.kind, "node kind");
-    const inputs = ports(node, "inputs");
-    const outputs = ports(node, "outputs");
-    const projectionNode = { id: nodeId, domain, kind, ports: { inputs, outputs } };
-    nodes.set(nodeId, projectionNode);
-    return projectionNode;
+  const renderNodes = graph.nodes.map((n) => {
+    if (!obj(n)) fail("node must be an object");
+    const nid = name(n.id,"node.id");
+    if (nodes.has(nid)) fail(`duplicate node ${nid}`);
+    if (!KINDS.has(n.kind) || !Array.isArray(n.ports) || n.ports.length > 4096) fail(`invalid node ${nid}`);
+    const inputs=new Map(), outputs=new Map(), displayPorts=[];
+    for (const p of n.ports) {
+      const parsed=port(p);
+      if (inputs.has(parsed.id) || outputs.has(parsed.id)) fail(`duplicate port ${nid}.${parsed.id}`);
+      (parsed.direction==="input" ? inputs : outputs).set(parsed.id,parsed);
+      displayPorts.push(parsed);
+    }
+    if (n.kind==="composite") {
+      if (n.typeRef!=="" || !n.graphRef || n.graphRefRevision < 1) fail(`invalid composite ${nid}`);
+      name(n.graphRef,"node.graphRef");
+      version(n.graphRefRevision,"node.graphRefRevision",1);
+    } else {
+      contract(n.typeRef,"node.typeRef");
+      if (n.graphRef!=="" || n.graphRefRevision!==0) fail(`invalid noncomposite ${nid}`);
+    }
+    nodes.set(nid,{inputs,outputs});
+    return {id:nid,kind:n.kind,typeRef:n.typeRef,graphRef:n.graphRef,graphRefRevision:n.graphRefRevision,ports:displayPorts};
   });
-
-  const edgeIds = new Set();
-  const renderEdges = [];
-  const semanticEdges = [];
-  for (const edge of graph.edges) {
-    if (!record(edge)) fail("edge must be an object");
-    const edgeId = identifier(edge.id, "edge ID");
-    if (edgeIds.has(edgeId)) fail(`duplicate edge: ${edgeId}`);
-    edgeIds.add(edgeId);
-    if (!ALL_EDGES.has(edge.kind)) fail(`unsupported edge kind: ${edge.kind}`);
-    if (!record(edge.from) || !record(edge.to)) fail(`invalid edge endpoints: ${edgeId}`);
-    const source = nodes.get(identifier(edge.from.nodeId, "source node"));
-    const target = nodes.get(identifier(edge.to.nodeId, "target node"));
-    if (!source || !target) fail(`dangling edge: ${edgeId}`);
-    const sourcePort = identifier(edge.from.portId, "source port");
-    const targetPort = identifier(edge.to.portId, "target port");
-    const output = source.ports.outputs.find(p => p.id === sourcePort);
-    const input = target.ports.inputs.find(p => p.id === targetPort);
-    if (!output || !input) fail(`missing typed port on ${edgeId}`);
-    if (DRAWABLE.has(edge.kind) && output.type !== input.type) {
-      fail(`typed port mismatch on ${edgeId}: ${output.type} -> ${input.type}`);
+  const ids=new Set(), renderEdges=[], semanticEdges=[];
+  for (const e of graph.edges) {
+    if (!obj(e)) fail("edge must be an object");
+    const eid=name(e.id,"edge.id");
+    if (ids.has(eid)) fail(`duplicate edge ${eid}`);
+    ids.add(eid);
+    if (!SEMANTICS.has(e.semantics)) fail(`unsupported edge semantics ${eid}`);
+    const source=nodes.get(name(e.fromNode,"edge.fromNode"));
+    const target=nodes.get(name(e.toNode,"edge.toNode"));
+    if (!source || !target) fail(`dangling edge ${eid}`);
+    const src=source.outputs.get(name(e.fromPort,"edge.fromPort"));
+    const dst=target.inputs.get(name(e.toPort,"edge.toPort"));
+    if (!src || !dst) fail(`missing endpoint port ${eid}`);
+    if (src.dataType!==dst.dataType || src.semantics!==e.semantics || dst.semantics!==e.semantics) {
+      fail(`typed port/semantics mismatch ${eid}`);
     }
-    if (edge.kind === "feedback" &&
-        (!Number.isSafeInteger(edge.delayTicks) || edge.delayTicks < 1)) {
-      fail(`feedback edge ${edgeId} requires explicit positive delayTicks`);
+    version(e.delayTicks,"edge.delayTicks");
+    if (e.delayTicks>0 && e.semantics!=="event" && e.semantics!=="signal") {
+      fail(`illegal delay on ${eid}`);
     }
-    const projected = {
-      id: edgeId, kind: edge.kind,
-      from: { nodeId: source.id, portId: sourcePort },
-      to: { nodeId: target.id, portId: targetPort }
-    };
-    if (edge.kind === "feedback") projected.delayTicks = edge.delayTicks;
-    (DRAWABLE.has(edge.kind) ? renderEdges : semanticEdges).push(projected);
+    const projected={id:eid,semantics:e.semantics,fromNode:e.fromNode,fromPort:e.fromPort,toNode:e.toNode,toPort:e.toPort,delayTicks:e.delayTicks};
+    (NON_EXECUTABLE.has(e.semantics) ? semanticEdges : renderEdges).push(projected);
   }
-
-  // No executable Node-RED flow is emitted. Permission/network/dependency
-  // edges remain inert semantics, never deployable wires.
+  // No Node-RED flow is emitted. Permission/route/dependency edges
+  // are semantic overlays, never deployable wires or RBAC grants.
   return {
-    format: PROJECTION_VERSION,
-    source: { graphId: id, revision: graph.revision },
-    mode: "read-only",
-    renderNodes,
-    renderEdges,
-    semanticEdges
+    format:PROJECTION_VERSION,
+    source:{schema:SOURCE_SCHEMA,graphId:id,revision:graph.revision,domain:graph.domain},
+    mode:"read-only",
+    interfacePorts,renderNodes,renderEdges,semanticEdges
   };
 }
