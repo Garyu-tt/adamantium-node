@@ -1,0 +1,38 @@
+name: Adamantium Agent Graph R01
+on:
+  pull_request:
+    paths:
+      - 'adamantium/**'
+      - '.github/workflows/adamantium-agent-r01.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'adamantium/**'
+      - '.github/workflows/adamantium-agent-r01.yml'
+permissions:
+  contents: read
+jobs:
+  agent-safe-loop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check isolated agent graph modules
+        shell: bash
+        run: |
+          for file in adamantium/graph-schema/*.mjs adamantium/agent-gateway/*.mjs adamantium/node-red-adapter/*.mjs adamantium/graph-cli/*.mjs; do
+            node --check "$file"
+          done
+      - name: Security, CAS, idempotency and adapter smoke
+        run: node --test adamantium/tests/agent-graph.test.mjs
+      - name: One-command graph authoring / validation / rollback
+        run: node adamantium/graph-cli/cli.mjs
