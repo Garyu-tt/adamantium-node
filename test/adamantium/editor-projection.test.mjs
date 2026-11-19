@@ -1,65 +1,68 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createReadOnlyProjection, PROJECTION_VERSION } from "../../adamantium/editor-projection.mjs";
+import { createReadOnlyProjection, PROJECTION_VERSION, SOURCE_SCHEMA } from "../../adamantium/editor-projection.mjs";
 
-const fixture = () => ({
-  id: "genesis.demo", revision: 7,
+const port=(id,direction,semantics,dataType) => ({id,direction,semantics,dataType});
+const fixture=()=>({
+  schema: SOURCE_SCHEMA,
+  schemaVersion: 1,
+  id: "genesis.demo", domain: "genesis", revision: 7, interfacePorts: [],
   nodes: [
-    {
-      id: "sensor", domain: "genesis", kind: "sensory",
-      ports: { inputs: [{id:"context",type:"signal.v1"}], outputs: [{id:"signal",type:"signal.v1"}] },
-      metadata: { access_token: "MUST_NOT_APPEAR" }
-    },
-    {
-      id: "neuron", domain: "genesis", kind: "region",
-      ports: { inputs: [{id:"signal",type:"signal.v1"}], outputs: [{id:"signal",type:"signal.v1"}] },
-      parameters: { weights: [1, 2, 3], access_token: "MUST_NOT_APPEAR" }
-    }
+    {id:"sensor",kind:"sensor",typeRef:"genesis.sensor@1",graphRef:"",graphRefRevision:0,ports:[
+      port("context","input","signal","genesis.signal@1"),
+      port("signal","output","signal","genesis.signal@1"),
+      port("grant","output","permission","security.grant@1")
+    ]},
+    {id:"neuron",kind:"brain-region",typeRef:"genesis.neuron@1",graphRef:"",graphRefRevision:0,ports:[
+      port("signal","input","signal","genesis.signal@1"),
+      port("feedback","output","signal","genesis.signal@1"),
+      port("grant","input","permission","security.grant@1")
+    ]}
   ],
-  edges: [
-    { id: "input", kind: "signal", from: {nodeId:"sensor",portId:"signal"}, to: {nodeId:"neuron",portId:"signal"} },
-    { id: "loop", kind: "feedback", delayTicks: 1, from: {nodeId:"neuron",portId:"signal"}, to: {nodeId:"sensor",portId:"context"} },
-    { id: "auth", kind: "permission", from: {nodeId:"sensor",portId:"signal"}, to: {nodeId:"neuron",portId:"signal"} }
+  edges:[
+    {id:"input",fromNode:"sensor",fromPort:"signal",toNode:"neuron",toPort:"signal",semantics:"signal",delayTicks:0},
+    {id:"loop",fromNode:"neuron",fromPort:"feedback",toNode:"sensor",toPort:"context",semantics:"signal",delayTicks:1},
+    {id:"auth",fromNode:"sensor",fromPort:"grant",toNode:"neuron",toPort:"grant",semantics:"permission",delayTicks:0}
   ]
 });
 
-test("projects typed GENESIS feedback without runnable Node-RED flow", () => {
-  const projection = createReadOnlyProjection(fixture());
-  assert.equal(projection.format, PROJECTION_VERSION);
-  assert.equal(projection.mode, "read-only");
-  assert.deepEqual(projection.source, {graphId:"genesis.demo",revision:7});
-  assert.equal(projection.renderNodes.length, 2);
-  assert.equal(projection.renderEdges.length, 2);
-  assert.equal(projection.semanticEdges.length, 1);
-  assert.equal(projection.semanticEdges[0].kind, "permission");
-  assert.equal(JSON.stringify(projection).includes("MUST_NOT_APPEAR"), false);
-  assert.equal(JSON.stringify(projection).includes('"weights"'), false);
-  assert.equal(Object.hasOwn(projection, "flows"), false);
+test("projects canonical Graph IR v1, delayed feedback and inert permission relationships", () => {
+  const graph=fixture();
+  graph.__private="MUST_NOT_APPEAR"; // hypothetical upstream metadata is not projected
+  const result=createReadOnlyProjection(graph);
+  assert.equal(result.format,PROJECTION_VERSION);
+  assert.equal(result.mode,"read-only");
+  assert.deepEqual(result.source,{schema:SOURCE_SCHEMA,graphId:"genesis.demo",revision:7,domain:"genesis"});
+  assert.equal(result.renderNodes.length,2);
+  assert.equal(result.renderEdges.length,2);
+  assert.equal(result.renderEdges[1].delayTicks,1);
+  assert.equal(result.semanticEdges.length,1);
+  assert.equal(result.semanticEdges[0].semantics,"permission");
+  assert.equal(JSON.stringify(result).includes("MUST_NOT_APPEAR"),false);
+  assert.equal(Object.hasOwn(result,"flows"),false);
 });
 
-test("rejects invalid graph, duplicate ids, dangling edges, and untyped ports", () => {
-  assert.throws(() => createReadOnlyProjection(null), /graph must/);
-  const dup = fixture(); dup.nodes.push(dup.nodes[0]);
-  assert.throws(() => createReadOnlyProjection(dup), /duplicate node/);
-  const dangling = fixture(); dangling.edges[0].to.nodeId = "missing";
-  assert.throws(() => createReadOnlyProjection(dangling), /dangling/);
-  const untyped = fixture(); untyped.nodes[0].ports.outputs[0].type = "";
-  assert.throws(() => createReadOnlyProjection(untyped), /typed contract/);
-  const invalidPort = fixture(); invalidPort.edges[0].from.portId = "unknown";
-  assert.throws(() => createReadOnlyProjection(invalidPort), /missing typed port/);
+test("fails closed for wrong version, duplicate nodes and dangling graph edges", () => {
+  const bad=fixture();bad.schemaVersion=2;
+  assert.throws(()=>createReadOnlyProjection(bad),/source schema/);
+  const dup=fixture();dup.nodes.push(dup.nodes[0]);
+  assert.throws(()=>createReadOnlyProjection(dup),/duplicate node/);
+  const dangling=fixture();dangling.edges[0].fromNode="missing";
+  assert.throws(()=>createReadOnlyProjection(dangling),/dangling edge/);
 });
 
-test("requires bounded delayed feedback, keeps policy edges nonexecutable", () => {
-  const delayed = fixture(); delete delayed.edges[1].delayTicks;
-  assert.throws(() => createReadOnlyProjection(delayed), /positive delayTicks/);
-  const unknown = fixture(); unknown.edges[2].kind = "exec";
-  assert.throws(() => createReadOnlyProjection(unknown), /unsupported edge kind/);
-  const normal = createReadOnlyProjection(fixture());
-  assert.deepEqual(normal.semanticEdges.map(e=>e.kind),["permission"]);
+test("requires exact type and semantics on ports; permission never becomes wire", () => {
+  const mismatched=fixture();mismatched.nodes[1].ports[0].dataType="genesis.other@1";
+  assert.throws(()=>createReadOnlyProjection(mismatched),/typed port/);
+  const missing=fixture();missing.edges[0].fromPort="unknown";
+  assert.throws(()=>createReadOnlyProjection(missing),/missing endpoint/);
+  const illegal=fixture();illegal.edges[2].delayTicks=1;
+  assert.throws(()=>createReadOnlyProjection(illegal),/illegal delay/);
+  const badSemantics=fixture();badSemantics.edges[0].semantics="exec";
+  assert.throws(()=>createReadOnlyProjection(badSemantics),/unsupported edge/);
 });
 
-test("rejects over-budget graph size", () => {
-  const giant = fixture();
-  giant.edges = Array.from({length:200001},()=>null);
-  assert.throws(() => createReadOnlyProjection(giant), /budget exceeded/);
+test("enforces a bounded projection budget",()=>{
+  const g=fixture();g.edges=Array.from({length:200001},()=>null);
+  assert.throws(()=>createReadOnlyProjection(g),/budget exceeded/);
 });
