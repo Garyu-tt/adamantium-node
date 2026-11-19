@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createServer} from 'node:http';
 import {once} from 'node:events';
+import {spawn} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
 import {NodeRedV2} from '../../adamantium/node-red-adapter/client.mjs';
 import {AgentGraphGateway} from '../../adamantium/agent-gateway/gateway.mjs';
 
@@ -46,6 +48,7 @@ async function fixture() {
   });
   return {
     client,
+    clientPort:port,
     close:()=>new Promise((resolve,reject)=>
       server.close(error=>error?reject(error):resolve())),
     state:()=>({rev:'r'+rev,flows:structuredClone(flows),writes}),
@@ -195,5 +198,42 @@ test('two concurrent writers: server-side rev fences the losing writer',async()=
     assert.equal([a,b].filter(x=>x.status==='fulfilled').length,1);
     assert.equal([a,b].filter(x=>x.status==='rejected').length,1);
     assert.equal(fake.state().writes,1);
+  }finally{await fake.close()}
+});
+
+
+test('headless AI JSON-lines CLI produces draft but never accepts a deploy grant',async()=>{
+  const fake=await fixture();
+  try {
+    const cli=fileURLToPath(new URL('../../adamantium/graph-cli/cli.mjs',import.meta.url));
+    const child=spawn(process.execPath,[cli],{
+      env:{...process.env,
+        ADAMANTIUM_NODE_RED_URL:
+          'http://127.0.0.1:'+fake.clientPort+'/',
+        ADAMANTIUM_NODE_RED_TOKEN:TOKEN
+      },stdio:['pipe','pipe','pipe']
+    });
+    let stdout='',stderr='';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data',chunk=>{stdout+=chunk});
+    child.stderr.on('data',chunk=>{stderr+=chunk});
+    child.stdin.end([
+      JSON.stringify({operation:'graph.inspect'}),
+      JSON.stringify({operation:'graph.patch',base_revision:'r1',
+        note:'CLI dry run only',idempotency_key:'agent-cli-test-001'}),
+      JSON.stringify({operation:'graph.deploy',draft_id:'ignored',
+        idempotency_key:'agent-cli-deploy-001',writesEnabled:true})
+    ].join('\n')+'\n');
+    const [status]=await once(child,'close');
+    assert.equal(status,0,stderr);
+    const events=stdout.trim().split('\n').map(line=>JSON.parse(line));
+    assert.equal(events.length,3);
+    assert.equal(events[0].ok,true);
+    assert.equal(events[1].result.status,'draft_only');
+    assert.equal(events[2].ok,false);
+    assert.equal(events[2].error,'sandbox_write_grant_required');
+    assert.equal(stdout.includes(TOKEN),false);
+    assert.equal(fake.state().writes,0);
   }finally{await fake.close()}
 });
