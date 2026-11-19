@@ -1,0 +1,31 @@
+name: Adamantium orchestration signed snapshot R05
+on:
+  pull_request:
+    paths:
+      - 'adamantium/orchestration-signed-snapshot.mjs'
+      - 'test/adamantium/orchestration-signed-snapshot.test.mjs'
+      - 'docs/adamantium/ORCHESTRATOR-SIGNED-SNAPSHOT-R05.md'
+      - '.github/workflows/adamantium-orchestration-snapshot.yml'
+  push:
+    branches:
+      - 'integration/orchestration-signed-snapshot-r05'
+    paths:
+      - 'adamantium/orchestration-signed-snapshot.mjs'
+      - 'test/adamantium/orchestration-signed-snapshot.test.mjs'
+      - '.github/workflows/adamantium-orchestration-snapshot.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-readonly-view:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify signed work-order snapshot and offline cache
+        run: node --test test/adamantium/orchestration-signed-snapshot.test.mjs
+      - name: Confirm syntax
+        run: node --check adamantium/orchestration-signed-snapshot.mjs
