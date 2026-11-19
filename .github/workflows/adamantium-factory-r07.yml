@@ -1,0 +1,57 @@
+name: Adamantium Factory R07 Public Ed25519 Verifier
+on:
+  push:
+    paths:
+      - 'adamantium/node-factory/public-witness-verifier-r07.mjs'
+      - 'adamantium/node-factory/cli-public-verifier-r07.mjs'
+      - 'adamantium/node-factory/public-witness-studio-r07.mjs'
+      - 'test/adamantium/node-factory-public*r07.test.mjs'
+      - 'docs/FACTORY-R07.md'
+      - '.github/workflows/adamantium-factory-r07.yml'
+  pull_request:
+    paths:
+      - 'adamantium/node-factory/public-witness-verifier-r07.mjs'
+      - 'adamantium/node-factory/cli-public-verifier-r07.mjs'
+      - 'adamantium/node-factory/public-witness-studio-r07.mjs'
+      - 'test/adamantium/node-factory-public*r07.test.mjs'
+      - 'docs/FACTORY-R07.md'
+      - '.github/workflows/adamantium-factory-r07.yml'
+permissions:
+  contents: read
+jobs:
+  public-only-verification:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Verify pinned Ed25519, stale status and public observer
+        run: node --test test/adamantium/node-factory-public-witness-r07.test.mjs test/adamantium/node-factory-public-cli-r07.test.mjs
+  real-runtime-to-public-proof:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked Node-RED 5 dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Actual runtime → durable journal → signed receipt → public verifier
+        run: node --test test/adamantium/node-factory-public-real-r07.test.mjs
