@@ -30,7 +30,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: Execute isolated API, typed graph and security tests
-        run: node --test test/adamantium/*.test.mjs
+        run: node --test test/adamantium/agent-graph-model.test.mjs test/adamantium/agent-graph-service.test.mjs test/adamantium/node-red-bootstrap.test.mjs test/adamantium/agent-gateway-http.test.mjs
       - name: Exercise one-command dry-run CLI
         run: node adamantium/graph-cli/cli.mjs demo 'Собери тестовый граф'
       - name: Check original Node-RED workspace did not gain a dependency
