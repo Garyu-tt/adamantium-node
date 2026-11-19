@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 // Single-command R01 acceptance on an isolated draft store (no deployment).
+import {fileURLToPath} from 'node:url';
+import {resolve} from 'node:path';
 import {AgentGraphService} from '../agent-gateway/service.mjs';
 import {templateFlow} from '../graph-schema/safe-flow.mjs';
 
@@ -29,8 +31,8 @@ export function runDemo(command='собери безопасный тестов�
     before,patch,validation,testing,preview,rollback,after,
     result:'passed',live_node_red_changes:0};
 }
-if(process.argv[1] && import.meta.url===new URL(
-  'file://'+process.argv[1].replaceAll('\\','/')).href){
+if(process.argv[1] && resolve(fileURLToPath(import.meta.url))===
+  resolve(process.argv[1])){
   try {
     const command=process.argv.slice(2).join(' ')||
       'собери безопасный тестовый граф';
