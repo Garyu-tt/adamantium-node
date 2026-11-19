@@ -25,14 +25,15 @@ try{
     process.stdout.write(JSON.stringify(compileNodeRed(gateway.inspect().graph).nodes,null,2)+"\n");
   }else if(command==="serve"){
     const token=process.env.ADAMANTIUM_AGENT_API_TOKEN;
-    const {url}=await startGateway({token,sandbox:process.argv.includes("--sandbox")});
+    const {url}=await startGateway({token,sandbox:process.argv.includes("--sandbox"),
+      factoryVerify:process.argv.includes("--factory-verify")});
     process.stderr.write("Adamantium Agent Graph API listening at "+url+
       " (token-required, loopback, in-memory, no production deploy)\n");
   }else{
     process.stderr.write("Usage:\n"+
       "  node adamantium/graph-cli/cli.mjs demo [Собери тестовый граф]\n"+
       "  node adamantium/graph-cli/cli.mjs node-red [Собери тестовый граф]\n"+
-      "  ADAMANTIUM_AGENT_API_TOKEN=<secret> node adamantium/graph-cli/cli.mjs serve [--sandbox]\n");
+      "  ADAMANTIUM_AGENT_API_TOKEN=<secret> node adamantium/graph-cli/cli.mjs serve [--sandbox] [--factory-verify]\n");
     if(command!=="help")process.exitCode=2;
   }
 }catch(err){
