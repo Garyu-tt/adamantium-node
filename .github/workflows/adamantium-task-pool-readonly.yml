@@ -1,0 +1,35 @@
+name: Adamantium-node Task Pool read-only adapter R06
+on:
+  pull_request:
+    paths:
+      - 'adamantium/task-pool-read-adapter.mjs'
+      - 'adamantium/orchestration-view-contract.mjs'
+      - 'test/adamantium/task-pool-read-adapter.test.mjs'
+      - 'docs/adamantium/TASK-POOL-READONLY-R06.md'
+      - '.github/workflows/adamantium-task-pool-readonly.yml'
+  push:
+    branches:
+      - 'integration/task-pool-readonly-r06'
+    paths:
+      - 'adamantium/task-pool-read-adapter.mjs'
+      - 'adamantium/orchestration-view-contract.mjs'
+      - 'test/adamantium/task-pool-read-adapter.test.mjs'
+      - '.github/workflows/adamantium-task-pool-readonly.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  task-pool-read-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify Task Pool read boundary and R05 integration
+        run: node --test test/adamantium/task-pool-read-adapter.test.mjs
+      - name: Verify prior R05 and R04 regressions
+        run: node --test test/adamantium/orchestration-signed-snapshot.test.mjs test/adamantium/orchestration-view-contract.test.mjs
+      - name: Confirm syntax
+        run: node --check adamantium/task-pool-read-adapter.mjs
