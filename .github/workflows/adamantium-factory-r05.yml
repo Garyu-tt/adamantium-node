@@ -4,6 +4,7 @@ on:
     paths:
       - 'adamantium/node-factory/**'
       - 'test/adamantium/node-factory-ledger*'
+      - 'test/adamantium/node-factory-studio-observer-r05.test.mjs'
       - 'test/adamantium/node-factory-g0-schema-r05.test.mjs'
       - 'test/adamantium/fixtures/graph-ir-v1.schema.json'
       - '.github/workflows/adamantium-factory-r05.yml'
@@ -12,6 +13,7 @@ on:
     paths:
       - 'adamantium/node-factory/**'
       - 'test/adamantium/node-factory-ledger*'
+      - 'test/adamantium/node-factory-studio-observer-r05.test.mjs'
       - 'test/adamantium/node-factory-g0-schema-r05.test.mjs'
       - 'test/adamantium/fixtures/graph-ir-v1.schema.json'
       - '.github/workflows/adamantium-factory-r05.yml'
@@ -35,7 +37,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: No-dependency journal replay, CAS, hash-chain and G0 preview
-        run: node --test test/adamantium/node-factory-ledger-r05.test.mjs
+        run: node --test test/adamantium/node-factory-ledger-r05.test.mjs test/adamantium/node-factory-studio-observer-r05.test.mjs
   real-verified-durable-proof:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 18
