@@ -4,14 +4,18 @@ on:
     paths:
       - 'adamantium/node-factory/audit-witness-r06.mjs'
       - 'adamantium/node-factory/cli-r06.mjs'
+      - 'adamantium/node-factory/witness-studio-observer-r06.mjs'
       - 'test/adamantium/node-factory-signed-witness*r06.test.mjs'
+      - 'test/adamantium/node-factory-witness-observer-r06.test.mjs'
       - 'docs/FACTORY-R06.md'
       - '.github/workflows/adamantium-factory-r06.yml'
   pull_request:
     paths:
       - 'adamantium/node-factory/audit-witness-r06.mjs'
       - 'adamantium/node-factory/cli-r06.mjs'
+      - 'adamantium/node-factory/witness-studio-observer-r06.mjs'
       - 'test/adamantium/node-factory-signed-witness*r06.test.mjs'
+      - 'test/adamantium/node-factory-witness-observer-r06.test.mjs'
       - 'docs/FACTORY-R06.md'
       - '.github/workflows/adamantium-factory-r06.yml'
 permissions:
@@ -33,7 +37,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: Verify Ed25519 receipts, signing replay and rollback denial
-        run: node --test test/adamantium/node-factory-signed-witness-r06.test.mjs
+        run: node --test test/adamantium/node-factory-signed-witness-r06.test.mjs test/adamantium/node-factory-witness-observer-r06.test.mjs
   real-sandbox-witness:
     strategy:
       fail-fast: false
