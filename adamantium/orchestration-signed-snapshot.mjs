@@ -13,6 +13,7 @@ const ID = /^[a-z][a-z0-9._:-]{0,127}$/;
 const SHA = /^[0-9a-f]{64}$/;
 const B64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 const MAX_VIEW_BYTES = 2 * 1024 * 1024;
+const authenticatedResults = new WeakSet();
 const MAX_TTL_MS = 5 * 60 * 1000;
 const MAX_CLOCK_SKEW_MS = 30 * 1000;
 const fail = reason => { throw new TypeError("Signed orchestration view rejected: " + reason); };
@@ -100,12 +101,13 @@ export function verifySignedOrchestrationView(envelope, {
   const observed = timestamp(doc.view.observedAt, "view.observedAt");
   if (observed > issued + MAX_CLOCK_SKEW_MS || issued - observed > MAX_TTL_MS)
     fail("stale or future observation");
-  return Object.freeze({
+  const verified = Object.freeze({
     sourceAuthenticated: true,
     signerKeyId: envelope.keyId,
     authorityProviderId: trustedAuthorityProviderId,
     sequence: doc.sequence,
     graphRevision: view.revision,
+    snapshotObservedAt: doc.view.observedAt,
     expiresAt: doc.expiresAt,
     policySha256: doc.policySha256,
     payloadSha256: createHash("sha256").update(payload).digest("hex"),
@@ -115,15 +117,17 @@ export function verifySignedOrchestrationView(envelope, {
     executionAuthorized: false,
     graphMutationAuthorized: false
   });
+  authenticatedResults.add(verified);
+  return verified;
 }
 /** Convert only an authenticated view to the installed read-only mobile UI. */
 export function projectVerifiedOrchestrationMobileUI(verified) {
-  if (!verified || verified.sourceAuthenticated !== true || verified.readOnly !== true ||
+  if (!verified || !authenticatedResults.has(verified) || verified.sourceAuthenticated !== true || verified.readOnly !== true ||
       !verified.view || verified.executionAuthorized !== false) fail("verified view required");
   const ui = projectOrchestrationMobileUI({
     schema: verified.view.schema,
     revision: verified.view.revision,
-    observedAt: verified.view.observedAt ?? new Date(0).toISOString(),
+    observedAt: verified.snapshotObservedAt,
     authorityProviderId: verified.view.authorityProviderId,
     providers: verified.view.providers,
     tasks: verified.view.tasks
