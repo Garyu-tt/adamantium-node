@@ -55,7 +55,7 @@ export function makePublicWitnessObserver(statusRoot){
     complete:'payload',targetType:'msg',statusVal:'',statusType:'auto',
     x:1160,y:305,wires:[]},
    {id:node('99'),type:'comment',z:tab,
-    name:'Состояние проверяется без signer-private.pem',
+    name:'Состояние проверяется без доступа к закрытому ключу',
     info:'Публичный fingerprint закрепляется вне доверия самого свидетеля. Здесь только read-only файлы.',
     x:475,y:395,wires:[]},
    {id:node('A0'),type:'comment',z:tab,
