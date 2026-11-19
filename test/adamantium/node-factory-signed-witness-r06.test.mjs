@@ -49,7 +49,13 @@ test('Ed25519 receipt chain witnesses journal revisions without granting any per
   const c=await x.witness.issue(x.ledgerDir);
   assert.equal(c.sequence,3);
   assert.equal(c.previousReceipt,b.receiptHash);
-  const reopened=await FactoryAuditWitness.open(x.witnessDir);
+  const publicFingerprint=(await x.witness.inspect()).keyFingerprint;
+  await assert.rejects(FactoryAuditWitness.open(x.witnessDir,{
+   expectedKeyFingerprint:'sha256:'+'f'.repeat(64)
+  }),/trusted_witness_key_mismatch/);
+  const reopened=await FactoryAuditWitness.open(x.witnessDir,{
+   expectedKeyFingerprint:publicFingerprint
+  });
   const state=await reopened.inspect(x.ledgerDir);
   assert.equal(state.checkpoints,3);
   assert.equal(state.latest.receiptHash,c.receiptHash);
