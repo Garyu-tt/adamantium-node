@@ -43,7 +43,7 @@ test('generated node executes inside actual Node-RED runtime', {timeout:30000}, 
     });
   }finally{
     if(serverStarted){
-      try{await callbackPromise(done=>helper.unload(done));}finally{
+      try{await helper.unload();}finally{
         await callbackPromise(done=>helper.stopServer(done));
       }
     }
