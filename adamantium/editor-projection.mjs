@@ -91,9 +91,11 @@ export function createReadOnlyProjection(graph) {
     if (!source || !target) fail(`dangling edge: ${edgeId}`);
     const sourcePort = identifier(edge.from.portId, "source port");
     const targetPort = identifier(edge.to.portId, "target port");
-    if (!source.ports.outputs.some(p => p.id === sourcePort) ||
-        !target.ports.inputs.some(p => p.id === targetPort)) {
-      fail(`missing typed port on ${edgeId}`);
+    const output = source.ports.outputs.find(p => p.id === sourcePort);
+    const input = target.ports.inputs.find(p => p.id === targetPort);
+    if (!output || !input) fail(`missing typed port on ${edgeId}`);
+    if (DRAWABLE.has(edge.kind) && output.type !== input.type) {
+      fail(`typed port mismatch on ${edgeId}: ${output.type} -> ${input.type}`);
     }
     if (edge.kind === "feedback" &&
         (!Number.isSafeInteger(edge.delayTicks) || edge.delayTicks < 1)) {
