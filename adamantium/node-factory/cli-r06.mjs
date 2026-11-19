@@ -2,19 +2,21 @@
 // SPDX-License-Identifier: Apache-2.0
 // Operator-only. Refuses arbitrary install, privileged apply or network access.
 import {FactoryAuditWitness} from './audit-witness-r06.mjs';
-const [action,witnessRoot,parameter]=process.argv.slice(2);
+const [action,witnessRoot,parameter,expectedKeyFingerprint]=process.argv.slice(2);
 try{
- if(!witnessRoot||process.argv.length>5)
+ if(!witnessRoot||process.argv.length>6)
   throw new Error('explicit_witness_root_required');
  let result;
  if(action==='init'){
+  if(expectedKeyFingerprint)throw new Error('extra_argument_not_allowed');
   if(!parameter)throw new Error('ledger_id_required');
   const witness=await FactoryAuditWitness.create(witnessRoot,parameter);
   result=await witness.inspect();
  }else if(action==='inspect'){
-  const witness=await FactoryAuditWitness.open(witnessRoot);
+  const witness=await FactoryAuditWitness.open(witnessRoot,{expectedKeyFingerprint});
   result=await witness.inspect(parameter);
  }else if(action==='issue'){
+  if(expectedKeyFingerprint)throw new Error('extra_argument_not_allowed');
   if(!parameter)throw new Error('ledger_root_required');
   const witness=await FactoryAuditWitness.open(witnessRoot);
   result=await witness.issue(parameter);
