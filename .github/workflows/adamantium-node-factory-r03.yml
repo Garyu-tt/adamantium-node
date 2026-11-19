@@ -4,7 +4,7 @@ on:
     paths:
       - 'adamantium/node-red-adapter/**'
       - 'adamantium/node-factory/**'
-      - 'test/adamantium/node-factory-admin-r03.test.mjs'
+      - 'test/adamantium/node-factory-admin-*.test.mjs'
       - '.github/workflows/adamantium-node-factory-r03.yml'
       - 'docs/NODE-FACTORY-R03.md'
   pull_request:
@@ -34,5 +34,7 @@ jobs:
           cache: npm
       - name: Install locked workspace dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reject non-loopback endpoints, foreign identities and unsafe types
+        run: node --test test/adamantium/node-factory-admin-guards.test.mjs
       - name: Real local Node-RED 5 Admin API v2, execution and restart rollback
         run: node --test test/adamantium/node-factory-admin-r03.test.mjs
