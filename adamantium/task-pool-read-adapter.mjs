@@ -41,7 +41,7 @@ export function discoverTaskPoolReader(visibleGraph){
   if(!OWNER.test(owner))reject('invalid owner');
   const listAction=n.provider.listAction;
   if(typeof listAction!=='string'||!ACTION.test(listAction))continue;
-  if(!listAction.startsWith(owner+'.')||!actions.has(listAction))continue;
+  if(listAction!==owner+'.list'||!actions.has(listAction))continue;
   candidates.push({owner,action:listAction,resource:n.id});
  }
  if(candidates.length>1)reject('ambiguous Task Pool authority; select a pinned source');
