@@ -4,12 +4,16 @@ on:
     paths:
       - 'adamantium/node-factory/**'
       - 'test/adamantium/node-factory-ledger*'
+      - 'test/adamantium/node-factory-g0-schema-r05.test.mjs'
+      - 'test/adamantium/fixtures/graph-ir-v1.schema.json'
       - '.github/workflows/adamantium-factory-r05.yml'
       - 'docs/FACTORY-R05.md'
   pull_request:
     paths:
       - 'adamantium/node-factory/**'
       - 'test/adamantium/node-factory-ledger*'
+      - 'test/adamantium/node-factory-g0-schema-r05.test.mjs'
+      - 'test/adamantium/fixtures/graph-ir-v1.schema.json'
       - '.github/workflows/adamantium-factory-r05.yml'
       - 'docs/FACTORY-R05.md'
 permissions:
@@ -49,5 +53,7 @@ jobs:
           cache: npm
       - name: Install locked Node-RED 5 dependencies
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Validate R05 G0 projection with pinned canonical ToolBox JSON Schema
+        run: node --test test/adamantium/node-factory-g0-schema-r05.test.mjs
       - name: Persist genuine disposable Node-RED 5 verification and reopen
         run: node --test test/adamantium/node-factory-ledger-real-r05.test.mjs
