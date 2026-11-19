@@ -26,7 +26,7 @@ export class FactorySandboxAdmin{
   const response=await fetch(this.baseUrl+path,{
    method,redirect:'error',signal:AbortSignal.timeout(12000),
    headers:{Authorization:'Bearer '+this.token,
-    'Node-RED-API-Version':'v2',
+    'Node-RED-API-Version':'v2','Accept':'application/json',
     ...(body===undefined?{}:{'Content-Type':'application/json'})},
    ...(body===undefined?{}:{body:JSON.stringify(body)})
   });
