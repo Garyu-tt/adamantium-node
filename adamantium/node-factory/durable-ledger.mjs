@@ -5,6 +5,7 @@ import {mkdir,writeFile,readFile,open,rm,lstat,rename} from 'node:fs/promises';
 import {join,resolve} from 'node:path';
 import {createHash,randomUUID} from 'node:crypto';
 import {validateFactoryContract} from './contract.mjs';
+import {renderNodePackage} from './generate.mjs';
 
 const error=code=>Object.assign(new Error(code),{code});
 const sha=s=>'sha256:'+createHash('sha256').update(s).digest('hex');
@@ -24,11 +25,28 @@ function inspectPayload(kind,payload,state){
     !id.test(payload.proposalId)||!digest.test(payload.sourceDigest)||
     state.proposals[payload.proposalId])throw error('invalid_factory_proposal_event');
   validateFactoryContract(payload.contract);
+  if(sha(JSON.stringify(renderNodePackage(payload.contract).sha256))!==payload.sourceDigest)
+   throw error('factory_proposal_digest_mismatch');
  } else if(kind==='factory.verified'){
-  if(!exact(payload,['proposalId','verificationDigest'])||
+  if(!exact(payload,['proposalId','verificationDigest','proof'])||
      !id.test(payload.proposalId)||!digest.test(payload.verificationDigest)||
      state.proposals[payload.proposalId]?.status!=='proposed')
     throw error('invalid_factory_verification_event');
+  const expected=renderNodePackage(state.proposals[payload.proposalId].contract);
+  const proof=payload.proof;
+  if(!proof||typeof proof!=='object'||
+     proof.nodeType!==expected.nodeType||
+     proof.packageName!==expected.packageName||
+     JSON.stringify(proof.artifactHashes)!==JSON.stringify(expected.sha256)||
+     proof.installedBytesVerified!==true||
+     proof.actualNodeRedExecution!==true||
+     proof.expectedOutputObserved!==true||
+     proof.registeredInTestPalette!==true||
+     proof.rollbackVerified!==true||proof.sandboxDestroyed!==true||
+     proof.productionDeployment!==false||proof.productionPublication!==false||
+     proof.authorizedForLifecycle!==false||
+     sha(JSON.stringify(proof))!==payload.verificationDigest)
+    throw error('factory_verification_proof_invalid');
  } else if(kind==='factory.rejected'){
   if(!exact(payload,['proposalId','reason'])||
     !id.test(payload.proposalId)||
@@ -55,6 +73,7 @@ function apply(state,record){
  }else if(record.kind==='factory.verified'){
   const p=state.proposals[proposalId];
   p.status='verified';p.verificationDigest=record.payload.verificationDigest;
+  p.proof=record.payload.proof;
  }else if(record.kind==='factory.rejected'){
   const p=state.proposals[proposalId];
   p.status='rejected';p.failure=record.payload.reason;
