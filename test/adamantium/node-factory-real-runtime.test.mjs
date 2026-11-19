@@ -6,7 +6,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createRequire} from 'node:module';
-import {generateNodePackage} from '../../adamantium/node-factory/generate.mjs';
+import {manufactureIsolated} from '../../adamantium/node-factory/manufacture.mjs';
 import {demoFactoryContract} from '../../adamantium/node-factory/contract.mjs';
 
 const require=createRequire(import.meta.url);
@@ -19,8 +19,8 @@ test('generated node executes inside actual Node-RED runtime', {timeout:30000}, 
   const root=await mkdtemp(join(tmpdir(),'adamantium-real-node-red-'));
   let serverStarted=false;
   try{
-    const result=await generateNodePackage(demoFactoryContract(),root);
-    const nodeModule=require(join(result.destination,'nodes/demo-uppercase.js'));
+    const result=await manufactureIsolated(demoFactoryContract(),join(root,'build'));
+    const nodeModule=require(join(result.palette,'nodes/demo-uppercase.js'));
     await callbackPromise(done=>helper.startServer(done));
     serverStarted=true;
     await new Promise((resolve,reject)=>{
