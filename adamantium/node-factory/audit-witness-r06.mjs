@@ -139,11 +139,14 @@ export class FactoryAuditWitness{
   await writeView(folder,buildView({identity,receipts:[]}));
   return new FactoryAuditWitness(folder);
  }
- static async open(root){
+ static async open(root,{expectedKeyFingerprint}={}){
   if(typeof root!=='string'||!root||!isAbsolute(root))
    throw err('absolute_witness_root_required');
   const witness=new FactoryAuditWitness(root);
-  await readChain(witness.root);
+  const state=await readChain(witness.root);
+  if(expectedKeyFingerprint!==undefined&&
+   state.identity.keyFingerprint!==expectedKeyFingerprint)
+   throw err('trusted_witness_key_mismatch');
   return witness;
  }
  async inspect(ledgerRoot){
