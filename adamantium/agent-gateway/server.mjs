@@ -1,4 +1,5 @@
 import {createServer} from 'node:http';
+import {fileURLToPath} from 'node:url';
 import {timingSafeEqual} from 'node:crypto';
 import {AgentGraphService} from './service.mjs';
 import {createNodeRedInspector} from '../node-red-adapter/inspect.mjs';
@@ -77,8 +78,7 @@ export async function startFromEnvironment(){
     ' (draft-only, no deploy)\n');
   return server;
 }
-if(process.argv[1] && new URL(import.meta.url).pathname.replaceAll('\\','/')===
-  process.argv[1].replaceAll('\\','/')){
+if(process.argv[1] && fileURLToPath(import.meta.url)===process.argv[1]){
   startFromEnvironment().catch(err=>{
     process.stderr.write((err.code||err.message||'gateway_start_failed')+'\n');
     process.exitCode=2;
