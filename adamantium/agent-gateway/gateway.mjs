@@ -46,13 +46,13 @@ export class AgentGraphGateway {
     const existing=this.#idempotency.get(key);
     if(existing) {
       if(existing.canonical!==canonical)fail('idempotency_key_conflict');
-      return structuredClone(existing.result);
+      return {replay:true,result:structuredClone(existing.result)};
     }
-    return {key,canonical,operation};
+    return {key,canonical,replay:false};
   }
   async #idempotent(action,request,fn) {
     const lookup=this.#memo(action,request,fn);
-    if(!lookup.operation)return lookup;
+    if(lookup.replay)return lookup.result;
     const result=await fn();
     this.#idempotency.set(lookup.key,{
       canonical:lookup.canonical,result:structuredClone(result)
