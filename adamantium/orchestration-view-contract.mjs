@@ -6,7 +6,7 @@ export const ORCHESTRATION_VIEW_SCHEMA = "mechanicus.orchestration-view/1";
 const ID=/^[a-z][a-z0-9._:-]{0,127}$/;
 const ROLES=new Set(["graph-authority","execution-provider","development-team","scheduler","tool-adapter","observer"]);
 const STATES=new Set(["reachable","read-only","degraded","unknown","offline"]);
-const TASKS=new Set(["new","queued","running","blocked","waiting-approval","testing","complete","failed"]);
+const TASKS=new Set(["new","queued","claimed","running","blocked","needs-review","waiting-approval","testing","complete","completed-unverified","failed","cancelled","unknown"]);
 const obj=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
 const error=msg=>{throw new TypeError("Orchestration view rejected: "+msg);};
 function fields(value,keys,required=keys){
@@ -76,7 +76,7 @@ export function validateOrchestrationView(view){
       error("invalid task owner");
     ids(t.dependsOn,40);
     if(!Array.isArray(t.blockers)||t.blockers.length>16)error("invalid blockers");
-    if(t.status==="blocked"&&t.blockers.length===0)error("blocker diagnosis missing");
+    if(["blocked","needs-review"].includes(t.status)&&t.blockers.length===0)error("blocker diagnosis missing");
     for(const b of t.blockers){
       fields(b,["code","reason","recoveryTaskId"]);
       identifier(b.code);label(b.reason);
