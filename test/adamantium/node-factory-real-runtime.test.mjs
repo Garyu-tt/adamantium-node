@@ -11,7 +11,7 @@ import {demoFactoryContract} from '../../adamantium/node-factory/contract.mjs';
 
 const require=createRequire(import.meta.url);
 const helper=require('node-red-node-test-helper');
-helper.init(require.resolve('node-red'));
+helper.init(require.resolve('../../packages/node_modules/node-red'));
 const callbackPromise=fn=>new Promise((resolve,reject)=>{
   fn(err=>err?reject(err):resolve());
 });
