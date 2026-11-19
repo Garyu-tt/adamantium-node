@@ -1,0 +1,55 @@
+name: Adamantium Factory R06 Signed Witness
+on:
+  push:
+    paths:
+      - 'adamantium/node-factory/audit-witness-r06.mjs'
+      - 'adamantium/node-factory/cli-r06.mjs'
+      - 'test/adamantium/node-factory-signed-witness*r06.test.mjs'
+      - 'docs/FACTORY-R06.md'
+      - '.github/workflows/adamantium-factory-r06.yml'
+  pull_request:
+    paths:
+      - 'adamantium/node-factory/audit-witness-r06.mjs'
+      - 'adamantium/node-factory/cli-r06.mjs'
+      - 'test/adamantium/node-factory-signed-witness*r06.test.mjs'
+      - 'docs/FACTORY-R06.md'
+      - '.github/workflows/adamantium-factory-r06.yml'
+permissions:
+  contents: read
+jobs:
+  signed-witness-unit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22','24']
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Verify Ed25519 receipts, signing replay and rollback denial
+        run: node --test test/adamantium/node-factory-signed-witness-r06.test.mjs
+  real-sandbox-witness:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked Node-RED 5 dependencies, no install scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Real disposable Node-RED verified proof signed by separate audit root
+        run: node --test test/adamantium/node-factory-signed-witness-real-r06.test.mjs
