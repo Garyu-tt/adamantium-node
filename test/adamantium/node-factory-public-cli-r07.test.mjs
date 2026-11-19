@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {mkdtemp,readFile,rm,mkdir} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {promisify} from 'node:util';
 import {execFile} from 'node:child_process';
 import {DurableFactoryWorkflow} from '../../adamantium/node-factory/durable-workflow.mjs';
@@ -12,7 +13,7 @@ import {FactoryAuditWitness} from '../../adamantium/node-factory/audit-witness-r
 import {demoFactoryContract} from '../../adamantium/node-factory/contract.mjs';
 import {makePublicWitnessObserver} from '../../adamantium/node-factory/public-witness-studio-r07.mjs';
 const exec=promisify(execFile);
-const cli=new URL('../../adamantium/node-factory/cli-public-verifier-r07.mjs',import.meta.url).pathname;
+const cli=fileURLToPath(new URL('../../adamantium/node-factory/cli-public-verifier-r07.mjs',import.meta.url));
 test('public witness status CLI creates read-only UI status and detects stale signed head',async()=>{
  const root=await mkdtemp(join(tmpdir(),'adamantium-r07-cli-'));
  try{
@@ -27,8 +28,7 @@ test('public witness status CLI creates read-only UI status and detects stale si
   await signer.issue(ledger);
   const run=async()=>{
    const out=await exec(process.execPath,[
-    new URL('../../adamantium/node-factory/cli-public-verifier-r07.mjs',import.meta.url).pathname,
-    'verify',ledger,witness,key,status
+    cli,'verify',ledger,witness,key,status
    ]);
    return {receipt:JSON.parse(out.stdout),
     status:JSON.parse(await readFile(join(status,'public-verifier-status.json'),'utf8'))};
