@@ -51,12 +51,12 @@ Each adapter negotiates a versioned contract for typed nodes, port directions, g
 
 Edges are semantically distinct:
 - `data`, `control`, `event`, `signal`: candidate executable wires only after an executor is explicitly selected and policy authorizes invocation.
-- `feedback`: requires a declared delay and execution/resource budget; no unbounded same-tick cycles.
+- Delayed feedback is an `event` or `signal` edge with explicit `delayTicks >= 1`; the independent native compiler enforces cycle policies and runtime budgets.
 - `permission`: a **policy relationship**, never a runtime wire or authorization by itself.
-- `network`: desired topology, not proof of an established WireGuard tunnel or transport privilege.
-- `dependency`, `containment`: orchestration and composition metadata, not flow messages.
+- `route`: desired network topology, not proof of an established WireGuard tunnel or transport privilege.
+- `dependency`: orchestration metadata, not a flow message. Containment is expressed by composite `graphRef` nodes, not a Graph IR v1 edge kind.
 
-The initial `adamantium/editor-projection.mjs` exports an **inert, read-only R01 projection fixture** with typed endpoints, budget guards and no private metadata forwarding. It **does not** yet parse the authoritative native IR, save editor changes, load custom nodes into Node-RED or execute anything. This is intentional fail-closed staging.
+The initial `adamantium/editor-projection.mjs` reads a **subset of the actual draft `mechanicus.universal-graph/1` JSON shape** (PR #143), producing an **inert, read-only R01 projection** with typed endpoint checks and budget guards. The native C++17 compiler + full JSON Schema validation remain authoritative. It **does not** persist editor changes, load custom nodes into Node-RED, provide full Graph IR structural validation or execute anything. This is intentional fail-closed staging.
 
 ## GENESIS contract (do not collapse the three meanings of 'graph')
 
