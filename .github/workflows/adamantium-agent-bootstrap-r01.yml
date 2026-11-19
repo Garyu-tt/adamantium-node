@@ -1,0 +1,37 @@
+name: Adamantium Node - Agent Graph Bootstrap R01
+on:
+  push:
+    paths:
+      - 'adamantium/**'
+      - 'test/adamantium/**'
+      - '.github/workflows/adamantium-agent-bootstrap-r01.yml'
+  pull_request:
+    paths:
+      - 'adamantium/**'
+      - 'test/adamantium/**'
+      - '.github/workflows/adamantium-agent-bootstrap-r01.yml'
+permissions:
+  contents: read
+jobs:
+  isolated-agent-bootstrap:
+    name: 'Agent Bootstrap / Node ${{ matrix.node }} / ${{ matrix.os }}'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Execute isolated API, typed graph and security tests
+        run: node --test test/adamantium/*.test.mjs
+      - name: Exercise one-command dry-run CLI
+        run: node adamantium/graph-cli/cli.mjs demo 'Собери тестовый граф'
+      - name: Check original Node-RED workspace did not gain a dependency
+        run: node -e "const p=require('./package.json'); if(p.name!=='node-red'||p.version!=='5.0.10') process.exit(1);"
