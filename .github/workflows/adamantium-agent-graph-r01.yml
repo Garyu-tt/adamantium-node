@@ -1,0 +1,40 @@
+name: Adamantium Agent Graph R01
+on:
+  pull_request:
+    paths:
+      - 'adamantium/agent-gateway/**'
+      - 'adamantium/node-red-adapter/**'
+      - 'adamantium/graph-schema/**'
+      - 'adamantium/graph-cli/**'
+      - 'test/adamantium/agent-graph-api.test.mjs'
+      - '.github/workflows/adamantium-agent-graph-r01.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'adamantium/agent-gateway/**'
+      - 'adamantium/node-red-adapter/**'
+      - 'adamantium/graph-schema/**'
+      - 'adamantium/graph-cli/**'
+      - 'test/adamantium/agent-graph-api.test.mjs'
+      - '.github/workflows/adamantium-agent-graph-r01.yml'
+permissions:
+  contents: read
+jobs:
+  isolated-bootstrap:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify syntax
+        run: node --check adamantium/agent-gateway/gateway.mjs
+      - name: Verify isolated API actions with fake Node-RED REST server
+        run: node --test test/adamantium/agent-graph-api.test.mjs
