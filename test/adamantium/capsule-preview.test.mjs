@@ -7,15 +7,18 @@ import {readFile} from "node:fs/promises";
 test("Capsule Studio preview serves only static editor assets on loopback",async()=>{
   const program=fileURLToPath(new URL("../../adamantium/capsule-preview-server.mjs",import.meta.url));
   const child=spawn(process.execPath,[program,"0"],{stdio:["ignore","pipe","pipe"],windowsHide:true});
-  let stderr="";
+  let stderr="",stdout="";
   child.stderr.on("data",chunk=>{stderr+=chunk.toString();});
   try{
     const port=await new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(new Error("server start timeout: "+stderr)),8000);
+      const timer=setTimeout(()=>reject(new Error("server start timeout: "+stderr)),
+        process.platform==="win32"?24000:12000);
       child.on("error",error=>{clearTimeout(timer);reject(error);});
       child.on("exit",code=>{clearTimeout(timer);reject(new Error("server exited "+code+": "+stderr));});
       child.stdout.on("data",chunk=>{
-        const match=chunk.toString().match(/http:\/\/127\.0\.0\.1:(\d+)/);
+        // Windows pipes may split a single listening URL across data events.
+        stdout=(stdout+chunk.toString()).slice(-4096);
+        const match=stdout.match(/http:\/\/127\.0\.0\.1:(\d+)/);
         if(match){clearTimeout(timer);resolve(Number(match[1]));}
       });
     });
@@ -46,7 +49,7 @@ test("Capsule Studio preview serves only static editor assets on loopback",async
   }
 });
 
-test("Capsule R05 workspace is nonzero-height and exposes Construct plus IR controls",async()=>{
+test("Capsule R08 workspace is nonzero-height and exposes Construct plus IR controls",async()=>{
   const file=fileURLToPath(new URL("../../adamantium/capsule-preview/index.html",import.meta.url));
   const html=await readFile(file,"utf8");
   assert.match(html,/Capsule Studio R08/);
