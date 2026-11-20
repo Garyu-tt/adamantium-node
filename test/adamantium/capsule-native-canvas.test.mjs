@@ -204,3 +204,25 @@ test("native draft layer intercepts dangerous flow shortcuts and unregisters on 
  controller.close();
  assert.equal(b.listeners.keydown.length,0);
 });
+
+test("Q from a focused toolbar button cannot open native Construct behind capsule lens",()=>{
+ const b=fakeBrowser(),controller=mountNativeCapsuleWorkspace(b);
+ try{
+  let stopped=false,prevented=false;
+  b.windowRef.emit("keydown",{
+   key:"q",ctrlKey:false,metaKey:false,altKey:false,target:{tagName:"BUTTON"},
+   stopImmediatePropagation(){stopped=true;},stopPropagation(){},
+   preventDefault(){prevented=true;}
+  });
+  assert.equal(stopped,true,"Q must not reach native Construct document listener");
+  assert.equal(prevented,true,"Q should not activate a second editing mode");
+  stopped=false;prevented=false;
+  b.windowRef.emit("keydown",{
+   key:"q",ctrlKey:false,metaKey:false,altKey:false,target:{tagName:"INPUT"},
+   stopImmediatePropagation(){stopped=true;},stopPropagation(){},
+   preventDefault(){prevented=true;}
+  });
+  assert.equal(stopped,false,"editable input must keep text keyboard events");
+  assert.equal(prevented,false,"typing q is allowed in form controls");
+ }finally{controller.close();}
+});
