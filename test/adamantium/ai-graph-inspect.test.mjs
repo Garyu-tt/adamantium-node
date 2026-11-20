@@ -23,7 +23,8 @@ test("validates strict local-only origin",()=>{
 test("returns redacted typed read-only projection",()=>{
   const result=projection(fixture),text=JSON.stringify(result);
   assert.equal(result.revision,"rev-1");
-  assert.deepEqual({...result.summary,types:{...result.summary.types}},{tabs:1,nodes:2,outboundEdges:1,types:{tab:1,inject:1,debug:1}});
+  assert.deepEqual({...result.summary,types:{...result.summary.types}},{tabs:1,nodes:2,outboundEdges:1,danglingEdges:0,types:{tab:1,inject:1,debug:1}});
+  assert.deepEqual(result.edges,[{from:"inject_1",output:0,to:"debug_1"}]);
   assert.equal(result.nodes[0].name,"input");
   assert.ok(!text.includes("SUPERSECRET"));
   assert.ok(!text.includes("DO-NOT-EXPOSE"));
@@ -31,6 +32,17 @@ test("returns redacted typed read-only projection",()=>{
   assert.equal(result.authorizationGranted,false);
   assert.equal(result.liveExecutionConfirmed,false);
   assert.equal(result.trustedGraphIR,false);
+});
+test("reports dangling wires and detects rewiring without exposing payloads",()=>{
+  const before=projection(fixture);
+  const moved=projection({rev:"rev-rewired",flows:fixture.flows.map(n=>
+    n.id==="inject_1"?{...n,wires:[["extra_missing"]]}:n
+  )});
+  assert.equal(moved.summary.danglingEdges,1);
+  const delta=difference(before,moved);
+  assert.deepEqual(delta.removedEdges,["inject_1:0->debug_1"]);
+  assert.deepEqual(delta.addedEdges,["inject_1:0->extra_missing"]);
+  assert.ok(!JSON.stringify(delta).includes("SUPERSECRET"));
 });
 test("rejects ambiguous node identities and unexpected v2 shape",()=>{
   assert.throws(()=>projection({flows:[]}),/Invalid/);
