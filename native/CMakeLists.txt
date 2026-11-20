@@ -1,0 +1,23 @@
+cmake_minimum_required(VERSION 3.21)
+project(AdamantiumCapsuleNativeG0Gate LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+# The source of native G0 must be explicitly provided from an independently
+# reviewed and pinned version of Garyu-tt/AdamantiumToolBox. No vendored copy.
+if(NOT DEFINED MAS_G0_ROOT)
+  message(FATAL_ERROR "MAS_G0_ROOT must point to the pinned ToolBox native/universal-graph source")
+endif()
+if(NOT EXISTS "${MAS_G0_ROOT}/include/mas/universal_graph.hpp" OR
+   NOT EXISTS "${MAS_G0_ROOT}/src/universal_graph.cpp")
+  message(FATAL_ERROR "Invalid canonical G0 source root")
+endif()
+enable_testing()
+add_subdirectory("${MAS_G0_ROOT}" "${CMAKE_CURRENT_BINARY_DIR}/toolbox-g0")
+add_executable(capsule_g0_validator capsule-g0-bridge.cpp)
+target_link_libraries(capsule_g0_validator PRIVATE mas_universal_graph)
+if(MSVC)
+  target_compile_options(capsule_g0_validator PRIVATE /W4 /WX /utf-8)
+else()
+  target_compile_options(capsule_g0_validator PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
