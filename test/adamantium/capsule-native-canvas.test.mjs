@@ -257,3 +257,24 @@ test("post-write notification failure never rolls back already persisted graph",
   const stored=JSON.parse(f.backing.get(STORAGE_KEY));
   assert.equal(stored.model.graphs[f.canvas.graphId].instances.length,before+1);
 });
+
+test("stale native canvas cannot overwrite newer valid edits saved by a separate Sidebar document",()=>{
+  const {snapshot}=makeModel();
+  const f=fixture(snapshot);
+  const original=f.canvas.studio.snapshot();
+  const external=JSON.parse(f.backing.get(STORAGE_KEY));
+  external.positions[f.canvas.graphId][f.canvas.studio.graph(f.canvas.graphId).instances[0].id].x=1777;
+  const newBytes=JSON.stringify(external);
+  f.backing.set(STORAGE_KEY,newBytes);
+  assert.equal(f.canvas.addCapsule(),null,"stale local lens must refuse modification");
+  assert.equal(f.backing.get(STORAGE_KEY),newBytes,"external newer graph must survive");
+  assert.deepEqual(f.canvas.studio.snapshot(),original,"failed save must not mutate local graph");
+  assert.match(f.canvas.notice,/внешнем редакторе/);
+  f.canvas.refresh();
+  assert.equal(f.canvas.storageHead,newBytes);
+  assert.ok(f.canvas.addCapsule()?.graphId,"fresh read permits the next edit");
+  const stored=JSON.parse(f.backing.get(STORAGE_KEY));
+  const firstId=f.canvas.studio.graph(f.canvas.graphId).instances[0].id;
+  assert.equal(stored.positions[f.canvas.graphId][firstId].x,1777,
+    "fresh edit retains the Sidebar's external position change");
+});
