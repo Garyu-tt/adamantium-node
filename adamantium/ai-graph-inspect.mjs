@@ -26,6 +26,7 @@ export function projection(data) {
   const counts = Object.create(null);
   const tabs = [];
   const nodes = [];
+  const edges = [];
   for (const n of all) {
     if (!n || typeof n.id !== "string" || !/^[A-Za-z0-9._-]{1,128}$/.test(n.id) ||
         ids.has(n.id) || typeof n.type !== "string" || n.type.length > 120) {
@@ -41,15 +42,22 @@ export function projection(data) {
       safe.name = typeof n.label === "string" ? n.label.slice(0, 120) : safe.name || "Unnamed";
       tabs.push(safe);
     } else {
-      let edges = 0;
-      for (const group of Array.isArray(n.wires) ? n.wires : []) {
-        if (Array.isArray(group)) edges += group.length;
+      let count = 0;
+      for (const [output,group] of (Array.isArray(n.wires) ? n.wires : []).entries()) {
+        if (!Array.isArray(group)) throw new Error("Malformed wire group");
+        for (const to of group) {
+          if (typeof to !== "string" || !/^[A-Za-z0-9._-]{1,128}$/.test(to) ||
+              edges.length >= 50000) throw new Error("Malformed or oversized topology");
+          edges.push({from:n.id,output,to});
+          count++;
+        }
       }
-      safe.outboundEdges = edges;
+      safe.outboundEdges = count;
       nodes.push(safe);
     }
   }
-  const totalEdges = nodes.reduce((sum,n)=>sum+n.outboundEdges,0);
+  const totalEdges = edges.length;
+  const danglingEdges = edges.filter(e=>!ids.has(e.to)).length;
   return {
     format:"adamantium.node-red-readonly/1",
     source:"node-red-admin-v2",
@@ -57,8 +65,8 @@ export function projection(data) {
     authorizationGranted:false,
     liveExecutionConfirmed:false,
     revision:data.rev,
-    summary:{tabs:tabs.length,nodes:nodes.length,outboundEdges:totalEdges,types:counts},
-    tabs,nodes
+    summary:{tabs:tabs.length,nodes:nodes.length,outboundEdges:totalEdges,danglingEdges,types:counts},
+    tabs,nodes,edges
   };
 }
 export function difference(before,after) {
@@ -73,8 +81,13 @@ export function difference(before,after) {
     else if (JSON.stringify(n)!==JSON.stringify(old.get(id))) changed.push(id);
   }
   for (const id of old.keys()) if (!now.has(id)) removed.push(id);
+  const key=e=>e.from+":"+e.output+"->"+e.to;
+  const oldEdges=new Set(before.edges.map(key)), newEdges=new Set(after.edges.map(key));
+  const addedEdges=[...newEdges].filter(k=>!oldEdges.has(k));
+  const removedEdges=[...oldEdges].filter(k=>!newEdges.has(k));
   return {format:"adamantium.node-red-readonly-diff/1",from:before.revision,to:after.revision,added,removed,changed,
-    note:"Metadata-only diff. Source/config/code changes may be invisible and are never authorization receipts."};
+    addedEdges,removedEdges,
+    note:"Topology/metadata-only diff. Source/config/code changes may be invisible and are never authorization receipts."};
 }
 export async function inspect(origin,token,{fetchImpl=fetch,allowUnauthenticatedLab=false}={}) {
   if (!token && !allowUnauthenticatedLab) throw new Error("Missing token; --unauthenticated-lab needed for temporary loopback-only lab");
