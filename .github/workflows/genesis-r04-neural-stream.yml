@@ -1,0 +1,77 @@
+name: GENESIS R04 Neural Stream Tests
+on:
+  pull_request:
+    paths:
+      - 'experiments/genesis/r04-*.zip.b64'
+      - 'experiments/genesis/r04-manifest.json'
+      - 'docs/adamantium/GENESIS-R04-NEURAL-STREAM.md'
+      - '.github/workflows/genesis-r04-neural-stream.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-r04:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check checksums, exact ZIP allowlist, and extract offline source
+        run: |
+          python3 - <<'PY'
+          import base64,hashlib,io,json,pathlib,zipfile
+          p=pathlib.Path('experiments/genesis')
+          m=json.loads((p/'r04-manifest.json').read_text())
+          assert m['schema']=='mechanicus.genesis-r04-handoff/1'
+          assert m['artifact']['sha256']=='7ca84cef40bd1bce9b521c57d5835da23187a44dc400fe465e3ff0387726315b'
+          for name, expected, maxbytes in [
+             ('r04-delta.zip.b64',m['artifact']['sha256'],13100),
+             ('r04-full.zip.b64','5e13361a770b30dce532642874f6490cfee8e649850f47287012f7945d4a8bcc',37000)
+          ]:
+             raw=base64.b64decode((p/name).read_text().strip(),validate=True)
+             assert len(raw) <= maxbytes and hashlib.sha256(raw).hexdigest()==expected
+             with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                 names=[e.filename for e in z.infolist()]
+                 assert len(names)==len(set(names))
+                 assert all(not n.startswith('/') and not n.startswith('\\') and '..' not in pathlib.PurePosixPath(n).parts and '\\' not in n for n in names)
+                 assert all(e.file_size<=100_000 and (e.external_attr>>16)&0o170000!=0o120000 for e in z.infolist())
+                 if name=='r04-delta.zip.b64':
+                    assert set(names)==set(m['contents'])
+                    for n in names:assert hashlib.sha256(z.read(n)).hexdigest()==m['contents'][n]
+                 else:
+                    assert len(names)==19
+                    assert all(e.filename.startswith('vendor/r03/') or e.filename in m['contents'] for e in z.infolist())
+                    for n in names:
+                       if n in m['contents']: assert hashlib.sha256(z.read(n)).hexdigest()==m['contents'][n]
+                       elif n.startswith('vendor/r03/'):
+                          short=n[len('vendor/r03/'):]
+                          assert hashlib.sha256(z.read(n)).hexdigest()==m['vendored_from']['genesis_neural_circuit_r03'][short]
+                    pathlib.Path('/tmp/genesis_r04').mkdir(exist_ok=True)
+                    z.extractall('/tmp/genesis_r04')
+          print('R04 ZIPs, every file hash and path allowlist: verified')
+          PY
+      - name: Check syntax
+        working-directory: /tmp/genesis_r04
+        run: |
+          for f in lib/*.cjs cli.cjs test/*.cjs; do node --check "$f"; done
+      - name: Run R04 and pinned R03 regressions
+        working-directory: /tmp/genesis_r04
+        run: |
+          node --test test/*.test.cjs
+          node --test vendor/r03/test/*.test.cjs
+      - name: Run bounded offline 120-tick circuit
+        working-directory: /tmp/genesis_r04
+        run: |
+          node cli.cjs demo --pattern moving-bar --steps 120 --id ci-r04 --out /tmp/genesis-r04-result
+          python3 - <<'PY'
+          import json,pathlib
+          p=pathlib.Path('/tmp/genesis-r04-result')
+          r=json.loads((p/'ci-r04-summary.json').read_text())
+          a=json.loads((p/'ci-r04-acquired.json').read_text())
+          assert r['mode']=='synthetic-only' and r['summary']['total_spikes']==2646
+          assert r['summary']['genomes_unchanged'] is True
+          assert a['schema']=='mechanicus.acquired-circuit/2'
+          assert a['regions']['V1']['changed_synapses']>0
+          print('GENESIS R04 isolated 120 ticks, 2646 spikes, acquired overlay OK')
+          PY
