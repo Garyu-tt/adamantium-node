@@ -1,0 +1,173 @@
+<!-- Adamantium IDE Shell R01: editor-only opt-in appearance and shortcuts. -->
+<script type="text/javascript">
+(function () {
+  "use strict";
+  const PLUGIN = "adamantium-ide-shell-r01";
+  const TAB = "adamantium-ide-shell-tab";
+  const KEY = "adamantium.ui.shell.r01";
+  const CSS = "resources/node-red-contrib-adamantium-ide-shell/ide-shell.css";
+  const VALID_MODES = ["off", "dark", "light"];
+  const state = {mode:"off",density:"comfortable",focus:false};
+  const doc = document.documentElement;
+  let panel, overlay, searchBox, resultsBox, lastFocus = null;
+  function load() {
+    try {
+      const prefs = JSON.parse(window.localStorage.getItem(KEY) || "{}");
+      if(VALID_MODES.includes(prefs.mode)) state.mode = prefs.mode;
+      if(["comfortable","compact"].includes(prefs.density)) state.density = prefs.density;
+      // Focus mode is session-only so users are never stranded in it after reload.
+    } catch (_) { /* private browsing/storage policies: use safe defaults */ }
+  }
+  function persist() {
+    try { window.localStorage.setItem(KEY, JSON.stringify({mode:state.mode,density:state.density})); }
+    catch (_) { /* UI remains usable when storage is unavailable */ }
+  }
+  function apply() {
+    doc.dataset.adamantiumShell = state.mode;
+    doc.dataset.adamantiumDensity = state.density;
+    doc.dataset.adamantiumFocus = state.focus ? "on" : "off";
+    if(panel) {
+      panel.querySelectorAll("[data-mode]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.mode === state.mode)));
+      panel.querySelectorAll("[data-density]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.density === state.density)));
+      const focus = panel.querySelector("[data-adi-focus]");
+      if(focus) focus.setAttribute("aria-pressed", String(state.focus));
+      panel.querySelector("[data-adi-mode-label]").textContent = "Стиль: " + ({off:"Node-RED",dark:"Mechanicus Dark",light:"Mechanicus Light"}[state.mode]);
+    }
+  }
+  function setMode(mode) { if(!VALID_MODES.includes(mode)) return; state.mode=mode;persist();apply(); }
+  function setDensity(density) { if(!["comfortable","compact"].includes(density))return; state.density=density;persist();apply(); }
+  function focusMode(value) { state.focus=Boolean(value);apply(); }
+  function element(tag, cls, text) {
+    const node = document.createElement(tag);
+    if(cls)node.className=cls;
+    if(typeof text==="string")node.textContent=text;
+    return node;
+  }
+  function button(text, cb, attrs={}) {
+    const b=element("button","",text);b.type="button";
+    for(const [k,v] of Object.entries(attrs)) b.setAttribute(k,v);
+    b.addEventListener("click",cb);return b;
+  }
+  function runAction(name) {
+    try {
+      if(typeof RED.actions?.invoke !== "function")throw new Error("Действия редактора недоступны");
+      RED.actions.invoke(name);
+    } catch(error) {
+      if(typeof RED.notify === "function")RED.notify("Недоступно: " + (error.message||error), "warning");
+    }
+  }
+  const commands = [
+    {label:"Тема: Mechanicus Dark",keywords:"тёмная тема",run:()=>setMode("dark")},
+    {label:"Тема: Mechanicus Light",keywords:"светлая тема",run:()=>setMode("light")},
+    {label:"Вернуть стандартный Node-RED",keywords:"сбросить оформление",run:()=>{focusMode(false);setMode("off");}},
+    {label:"Режим фокуса: вкл/выкл",keywords:"панели граф",run:()=>focusMode(!state.focus)},
+    {label:"Компактная плотность",keywords:"маленькие панели",run:()=>setDensity("compact")},
+    {label:"Комфортная плотность",keywords:"крупные панели",run:()=>setDensity("comfortable")},
+    {label:"Открыть Capsule Studio",keywords:"вложенные графы",run:()=>runAction("adamantium:show-capsule-studio")},
+    {label:"Открыть конструктор сборок (Q)",keywords:"библиотека пресеты",run:()=>runAction("adamantium:show-native-construct")}
+  ];
+  function closePalette() {
+    if(!overlay||overlay.hidden)return;
+    overlay.hidden=true;
+    if(lastFocus?.isConnected&&typeof lastFocus.focus==="function")lastFocus.focus();
+  }
+  function renderResults() {
+    if(!resultsBox || !searchBox)return;
+    const q=searchBox.value.trim().toLowerCase();
+    resultsBox.replaceChildren();
+    const found=commands.filter(c=>(c.label+" "+c.keywords).toLowerCase().includes(q));
+    if(!found.length){resultsBox.append(element("p","", "Команды не найдены"));return;}
+    for(const c of found){
+      resultsBox.append(button(c.label,()=>{closePalette();c.run();},{class:"adamantium-ide-command"}));
+    }
+  }
+  function openPalette() {
+    if(!overlay)return;
+    lastFocus=document.activeElement;
+    overlay.hidden=false;
+    searchBox.value="";renderResults();searchBox.focus();
+  }
+  function setupPalette() {
+    overlay=element("div","adamantium-ide-palette");
+    overlay.hidden=true;
+    const box=element("section","adamantium-ide-palette-box");
+    box.setAttribute("role","dialog");box.setAttribute("aria-modal","true");box.setAttribute("aria-label","Команды Adamantium IDE");
+    const head=element("div","adamantium-ide-palette-title","Команды Adamantium IDE");
+    searchBox=element("input","adamantium-ide-palette-input");
+    searchBox.type="search";searchBox.placeholder="Найти команду…";searchBox.setAttribute("aria-label","Поиск команды");
+    resultsBox=element("div","adamantium-ide-results");
+    const hint=element("p","adamantium-ide-palette-hint","Ctrl+K — команды · Escape — закрыть/выход из фокуса · Q — сборки (если установлен Construct)");
+    box.append(head,searchBox,resultsBox,hint);overlay.append(box);document.body.append(overlay);
+    overlay.addEventListener("pointerdown",event=>{if(event.target===overlay)closePalette();});
+    searchBox.addEventListener("input",renderResults);
+    searchBox.addEventListener("keydown",event=>{
+      if(event.key==="Enter"){
+        const first=resultsBox.querySelector("button");
+        if(first){event.preventDefault();first.click();}
+      }
+    });
+  }
+  function buildPanel() {
+    panel=element("section","adamantium-ide-panel");
+    panel.setAttribute("aria-label","Настройки оболочки Adamantium IDE");
+    panel.append(element("h2","","ADAMANTIUM / IDE"));
+    panel.append(element("small","","Внешний вид редактора · без изменения flow-runtime"));
+    panel.append(element("h3","","Тема"));
+    const styles=element("div","ad-row");
+    for(const [mode,label] of [["dark","Dark"],["light","Light"],["off","Node-RED"]]) {
+      styles.append(button(label,()=>setMode(mode),{"data-mode":mode,"aria-pressed":"false"}));
+    }
+    panel.append(styles);
+    panel.append(element("small","","Темы включаются по желанию; изменения только в браузере."));
+    panel.append(element("h3","ad-separator","Рабочее пространство"));
+    const controls=element("div","ad-row");
+    controls.append(button("Фокус",()=>focusMode(!state.focus),{"data-adi-focus":"","aria-pressed":"false","title":"Escape или Alt+Shift+F возвращает панели"}));
+    controls.append(button("Компактно",()=>setDensity("compact"),{"data-density":"compact","aria-pressed":"false"}));
+    controls.append(button("Свободно",()=>setDensity("comfortable"),{"data-density":"comfortable","aria-pressed":"false"}));
+    panel.append(controls);
+    panel.append(element("h3","ad-separator","Команды и графы"));
+    const graph=element("div","ad-row");
+    graph.append(button("Команды Ctrl+K",openPalette));
+    graph.append(button("Capsule Studio",()=>runAction("adamantium:show-capsule-studio")));
+    graph.append(button("Сборки Q",()=>runAction("adamantium:show-native-construct")));
+    panel.append(graph);
+    panel.append(element("small","","Capsule Studio и Construct подключаются отдельными плагинами. Графы не исполняются этой оболочкой."));
+    panel.append(element("h3","ad-separator","Ревизии"));
+    panel.append(element("p","","Live / Draft / Hot Swap: управление не подключено. Интерфейс не выдаёт локальные изменения за активированную ревизию."));
+    const mode=element("small","","");mode.setAttribute("data-adi-mode-label","");panel.append(mode);
+    return panel;
+  }
+  function keyboard(event) {
+    const target=event.target;
+    const editable=Boolean(target&&(target.isContentEditable||/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName||"")));
+    if(event.key==="Escape") {
+      if(overlay && !overlay.hidden){event.preventDefault();closePalette();return;}
+      if(state.focus){event.preventDefault();focusMode(false);}
+      return;
+    }
+    if((event.ctrlKey||event.metaKey)&&!event.altKey&&event.key.toLowerCase()==="k") {
+      event.preventDefault();if(overlay&&!overlay.hidden)closePalette();else openPalette();return;
+    }
+    if(!editable&&event.altKey&&event.shiftKey&&event.key.toLowerCase()==="f"){
+      event.preventDefault();focusMode(!state.focus);
+    }
+    // Q intentionally reserved for the existing native Construct plugin.
+  }
+  RED.plugins.registerPlugin(PLUGIN, {
+    type:"adamantium-editor-sidebar",
+    onadd:function() {
+      if(document.getElementById("adamantium-ide-shell-style"))return;
+      const link=element("link");link.id="adamantium-ide-shell-style";link.rel="stylesheet";
+      link.href=new URL(CSS,document.baseURI).href;document.head.append(link);
+      load();setupPalette();buildPanel();apply();
+      document.addEventListener("keydown",keyboard,true);
+      RED.actions.add("adamantium:show-ide-shell",()=>RED.sidebar.show(TAB));
+      RED.actions.add("adamantium:open-ide-commands",openPalette);
+      RED.sidebar.addTab({
+        id:TAB,name:"Adamantium IDE",label:"Studio",iconClass:"fa fa-sliders",
+        content:$(panel),action:"adamantium:show-ide-shell"
+      });
+    }
+  });
+})();
+</script>
