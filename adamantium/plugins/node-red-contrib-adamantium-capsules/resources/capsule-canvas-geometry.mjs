@@ -41,6 +41,8 @@ export function layoutCapsuleCanvas(studio,graphId,positions={},expandedSides={}
     const bySide=Object.fromEntries(SIDES.map(s=>[s,[]]));
     for(const p of ports){
       if(!["input","output"].includes(p.direction))throw new TypeError("invalid direction");
+      if(!["data","event","control","signal"].includes(p.semantics))
+        throw new TypeError("forbidden semantic-only port");
       const side=isCapsule?p.side:(p.direction==="input"?"west":"east");
       if(!inArray(SIDES,side))throw new TypeError("invalid capsule port side");
       bySide[side].push({...p,side});
@@ -98,12 +100,14 @@ export function layoutCapsuleCanvas(studio,graphId,positions={},expandedSides={}
     const from=allPortAnchors.get(portKey(edge.fromId,edge.fromTag));
     const to=allPortAnchors.get(portKey(edge.toId,edge.toTag));
     if(!from||!to)throw new TypeError("missing typed edge endpoint");
-    if(!from.visible||!to.visible){
-      hiddenLinks++;continue;
-    }
+    // Validate EVERY edge first, including edges whose endpoints are hidden
+    // behind an overflow +N. A rendering filter is never a validation gate.
     if(from.direction!=="output"||to.direction!=="input"||
       from.dataType!==to.dataType||from.semantics!==to.semantics)
       throw new TypeError("typed edge mismatch");
+    if(!from.visible||!to.visible){
+      hiddenLinks++;continue;
+    }
     wires.push({id:edge.id,fromId:edge.fromId,fromTag:edge.fromTag,
       toId:edge.toId,toTag:edge.toTag,d:geometryPath(from,to),
       from:{x:from.x,y:from.y,side:from.side},
