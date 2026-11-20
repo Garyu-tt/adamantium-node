@@ -1,0 +1,69 @@
+name: Adamantium Capsule Studio R06 (native G0 gate)
+on:
+  push:
+    branches: ["feature/capsules-native-g0-gate-r06"]
+  pull_request:
+    paths:
+      - "native/capsule-g0-bridge.cpp"
+      - "native/CMakeLists.txt"
+      - "adamantium/capsule-native-g0.mjs"
+      - "test/adamantium/capsule-native-g0.test.mjs"
+      - ".github/workflows/capsule-studio-r06.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  canonical-native-validation:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ["22", "24"]
+    runs-on: ${D}{{ matrix.os }}
+    steps:
+      - name: Checkout Adamantium-node
+        uses: actions/checkout@v4
+      - name: Checkout pinned ToolBox native G0
+        uses: actions/checkout@v4
+        with:
+          repository: Garyu-tt/AdamantiumToolBox
+          ref: da55544d738eca138b823175bdbc266a9efb8855
+          path: toolbox-g0
+          sparse-checkout: |
+            native/universal-graph
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${D}{{ matrix.node }}
+      - name: Build canonical C++17 compiler and adapter
+        shell: pwsh
+        run: |
+          cmake -S native -B build -DMAS_G0_ROOT="$env:GITHUB_WORKSPACE/toolbox-g0/native/universal-graph"
+          cmake --build build --config Release --parallel 2
+          ctest --test-dir build --build-config Release --output-on-failure
+      - name: Pin built executable for the JS contract
+        shell: pwsh
+        run: |
+          @'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const crypto = require('node:crypto');
+          const paths = [
+            'build/capsule_g0_validator',
+            'build/Release/capsule_g0_validator.exe'
+          ];
+          const file = paths.find(fs.existsSync);
+          if (!file) throw Error('native G0 binary was not produced');
+          const absolute = path.resolve(file);
+          const checksum = crypto.createHash('sha256')
+            .update(fs.readFileSync(absolute)).digest('hex');
+          fs.appendFileSync(process.env.GITHUB_ENV,
+            'ADAMANTIUM_G0_VALIDATOR_BIN=' + absolute + '\n' +
+            'ADAMANTIUM_G0_VALIDATOR_SHA256=' + checksum + '\n' +
+            'ADAMANTIUM_G0_REQUIRED=true\n');
+          '@ | Set-Content -Encoding utf8 .g0-env.cjs
+          node .g0-env.cjs
+      - name: Syntax and end-to-end regression (requires true native G0)
+        run: |
+          node --check adamantium/capsule-native-g0.mjs
+          node --test test/adamantium/capsule-*.test.mjs
