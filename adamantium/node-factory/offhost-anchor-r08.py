@@ -159,11 +159,13 @@ def public_fingerprint(pem):
 
 def load_state(root):
     identity = json.loads(read_regular(root / "anchor-identity.json", 4096))
-    require(exactly(identity, ["schema", "anchorId", "keyFingerprint", "sourceKeyPin"]) and
+    require(exactly(identity, ["schema", "anchorId", "keyFingerprint", "sourceKeyPin", "sourceLedgerId"]) and
             identity["schema"] == KIND and
             isinstance(identity["anchorId"], str) and IDENT.fullmatch(identity["anchorId"]) and
             HEX.fullmatch(identity["keyFingerprint"]) and
-            HEX.fullmatch(identity["sourceKeyPin"]), "invalid_anchor_identity")
+            HEX.fullmatch(identity["sourceKeyPin"]) and
+            isinstance(identity["sourceLedgerId"], str) and
+            IDENT.fullmatch(identity["sourceLedgerId"]), "invalid_anchor_identity")
     pem = read_regular(root / "anchor-public.pem", 4096)
     require(public_fingerprint(pem) == identity["keyFingerprint"], "anchor_key_mismatch")
     key = serialization.load_pem_public_key(pem)
@@ -207,6 +209,7 @@ def publish_view(root, identity, receipts):
         "schema": VIEW, "anchorId": identity["anchorId"],
         "anchorKeyFingerprint": identity["keyFingerprint"],
         "sourceWitnessPublicKeyPin": identity["sourceKeyPin"],
+        "sourceLedgerId": identity["sourceLedgerId"],
         "checkpoints": len(receipts), "latest": current,
         "signatureVerified": bool(current),
         "offhostProofRecorded": bool(current),
@@ -241,7 +244,8 @@ def init(root, ledger_id, pinned_source_key):
     identity = {
         "schema": KIND, "anchorId": "anchor-" + public_fingerprint(public)[7:31],
         "keyFingerprint": public_fingerprint(public),
-        "sourceKeyPin": pinned_source_key
+        "sourceKeyPin": pinned_source_key,
+        "sourceLedgerId": ledger_id
     }
     for name, data, mode in [
         ("anchor-private.pem", private, 0o600),
@@ -266,6 +270,8 @@ def attest(root, bundle):
     try:
         identity, receipts = load_state(root)
         source = read_public_bundle(bundle, identity["sourceKeyPin"])
+        require(source["ledgerId"] == identity["sourceLedgerId"],
+                "anchor_ledger_id_mismatch")
         prior = receipts[-1] if receipts else None
         if prior:
             require(prior["ledgerId"] == source["ledgerId"] and
