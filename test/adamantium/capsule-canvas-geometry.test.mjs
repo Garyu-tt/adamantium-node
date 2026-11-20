@@ -90,3 +90,29 @@ test("invalid coordinates, graph IDs and missing source ports are fail-closed or
  s.graph(root).edges[0].fromTag="missing";
  assert.throws(()=>layoutCapsuleCanvas(s,root),/missing typed edge endpoint/);
 });
+
+test("hidden overflow links are still validated instead of silently skipping forged semantics or directions",()=>{
+ const studio=new CapsuleStudio(),root=studio.createGraph("Root");
+ const ports=Array.from({length:6},(_,i)=>P("out"+i,"output"));
+ const writer=studio.createDefinition({name:"Writer",language:"rust",source:"// source",ports});
+ const cap=studio.createCapsule(root,"Big");
+ const internal=studio.place(cap.graphId,writer.id);
+ for(const p of ports)studio.expose(cap.graphId,{
+   side:"east",instanceId:internal,tag:p.tag,externalTag:p.tag
+ });
+ const sinkDef=studio.createDefinition({
+   name:"Sink",language:"python",source:"pass",
+   ports:[P("input","input"),P("alsoOutput","output")]
+ });
+ const sink=studio.place(root,sinkDef.id);
+ studio.connect(root,{fromId:cap.instanceId,fromTag:"out5",toId:sink,toTag:"input"});
+ assert.equal(layoutCapsuleCanvas(studio,root).hiddenLinks,1);
+ // This edge has a valid endpoint name but a forbidden output→output link.
+ studio.graph(root).edges[0].toTag="alsoOutput";
+ assert.throws(()=>layoutCapsuleCanvas(studio,root),/typed edge mismatch/);
+ studio.graph(root).edges[0].toTag="input";
+ // Semantics on a hidden port cannot become a permission route.
+ const bound=studio.graph(cap.graphId).boundary.find(p=>p.tag==="out5");
+ bound.semantics="permission";
+ assert.throws(()=>layoutCapsuleCanvas(studio,root),/forbidden semantic-only port/);
+});
