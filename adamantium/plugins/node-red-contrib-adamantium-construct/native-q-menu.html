@@ -71,6 +71,23 @@ padding:10px;display:grid;gap:8px;align-content:space-between}
  padding:6px;border-radius:7px
 }
 #adamantium-construct-native-overlay .adamantium-r3-rule label{display:flex;align-items:center;gap:7px}
+
+
+#adamantium-construct-native-overlay .adamantium-vault-panel{
+  border:1px solid var(--red-ui-secondary-border-color,currentColor);border-radius:9px;padding:10px}
+#adamantium-construct-native-overlay .adamantium-vault-panel summary{cursor:pointer;font-weight:600;padding:3px}
+#adamantium-construct-native-overlay .adamantium-vault-fields{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:10px 0}
+#adamantium-construct-native-overlay .adamantium-vault-fields label{display:grid;gap:4px}
+#adamantium-construct-native-overlay .adamantium-vault-fields label.adamantium-vault-check{
+  display:flex;align-items:center;grid-column:1/-1;gap:7px}
+#adamantium-construct-native-overlay .adamantium-vault-buttons{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+#adamantium-construct-native-overlay #ada-vault-json{
+  width:100%;resize:vertical;background:var(--red-ui-secondary-background-color,transparent);color:inherit;
+  border:1px solid var(--red-ui-secondary-border-color,currentColor);border-radius:6px}
+#adamantium-construct-native-overlay .adamantium-vault-plan{
+ white-space:pre-wrap;overflow:auto;font-size:12px;max-height:150px}
+#adamantium-construct-native-overlay #ada-vault-build:disabled{opacity:.4;cursor:not-allowed}
 </style>
 <script type="text/javascript">
 (function(){
@@ -80,6 +97,7 @@ const ACTION="adamantium:show-native-construct";
 const KEY="adamantium.native-q-library.r02";
 const ASSET="resources/node-red-contrib-adamantium-construct/core.mjs";
 const REACTOR_ASSET="resources/node-red-contrib-adamantium-construct/reactor-editor.mjs";
+const VAULT_ASSET="resources/node-red-contrib-adamantium-construct/vault-editor.mjs";
 const ROOT="adamantium-construct-native-overlay";
 RED.plugins.registerPlugin(PLUGIN,{
   type:"adamantium-editor-overlay",
@@ -101,7 +119,8 @@ RED.plugins.registerPlugin(PLUGIN,{
       "<button data-ada-tab='builtin' class='selected' type='button'>Готовые</button>",
       "<button data-ada-tab='snapshot' type='button'>Мои снимки</button>",
       "<button data-ada-tab='subflow' type='button'>Общие подграфы</button>",
-      "<button data-ada-tab='reference' type='button'>Ссылки</button></nav>",
+      "<button data-ada-tab='reference' type='button'>Ссылки</button>",
+      "<button data-ada-tab='vault' type='button'>Библиотека R04</button></nav>",
       "<div id='ada-native-cards' class='adamantium-construct-cards' aria-live='polite'></div>",
       "<div class='adamantium-construct-utilities'>",
       "<input id='ada-native-title-input' aria-label='Название сохранения' placeholder='Название новой сборки…'>",
@@ -113,6 +132,29 @@ RED.plugins.registerPlugin(PLUGIN,{
       "<label><input id='ada-native-auto-tab' type='checkbox'> При новой вкладке автоматически создать сборку</label>",
       "<select id='ada-native-auto-preset' aria-label='Сборка для новой вкладки'></select>",
       "<button type='button' id='ada-native-capsules'>Открыть Capsule Studio</button></div>",
+      "<details id='ada-vault-panel' class='adamantium-vault-panel'>",
+      "<summary>Версионированная библиотека · SHA-256 · строительная логистика</summary>",
+      "<div class='adamantium-vault-fields'>",
+      "<label>ID пакета<input id='ada-vault-id' placeholder='my_assembly' autocomplete='off'></label>",
+      "<label>Название<input id='ada-vault-title' placeholder='Моя сборка' autocomplete='off'></label>",
+      "<label>Версия<input id='ada-vault-version' type='number' min='1' max='12' value='1'></label>",
+      "<label>Исходники<select id='ada-vault-source'><option value='closed'>Закрытые</option><option value='open'>Открытые</option></select></label>",
+      "<label>Распространение<select id='ada-vault-distribution'><option value='free'>Бесплатное</option><option value='paid'>Платное</option></select></label>",
+      "<label>Зависимости<input id='ada-vault-deps' placeholder='module_a@1, module_b@2'></label>",
+      "<label class='adamantium-vault-check'><input id='ada-vault-public' type='checkbox'> Разрешить публичный каталог (только для открытых исходников)</label>",
+      "</div>",
+      "<div class='adamantium-vault-buttons'>",
+      "<button type='button' id='ada-vault-save'>Сохранить выделенное как версию</button>",
+      "<button type='button' id='ada-vault-export-public'>Экспорт публичного каталога</button>",
+      "<button type='button' id='ada-vault-export-private'>Экспорт частного архива</button>",
+      "<button type='button' id='ada-vault-import'>Импорт JSON</button>",
+      "</div>",
+      "<textarea id='ada-vault-json' aria-label='Экспорт или импорт библиотеки' rows='3' placeholder='JSON для экспорта/импорта (только локально)'></textarea>",
+      "<pre id='ada-vault-plan' class='adamantium-vault-plan' aria-live='polite'>Сначала выбери пакет и нажми «Спланировать».</pre>",
+      "<button type='button' id='ada-vault-build' disabled>Построить проверенный план</button>",
+      "<div id='ada-vault-stats' aria-live='polite'></div>",
+      "<small>Зависимости фиксируются версиями. Стоимость — только условные единицы сборки, не прогноз CPU/GPU.</small>",
+      "</details>",
       "<details id='ada-r3-panel' class='adamantium-r3-panel'>",
       "<summary>Реактивные правила R03 · создание и безопасная очистка</summary>",
       "<div class='adamantium-r3-controls'>",
@@ -133,7 +175,7 @@ RED.plugins.registerPlugin(PLUGIN,{
     document.body.appendChild(overlay);
     const $=id=>overlay.querySelector("#"+id);
     const cards=$("ada-native-cards");
-    let loaded=null,library=null,tab="builtin",lastFocus=null,working=false,autoBusy=false,corePromise=null,reactorPromise=null;
+    let loaded=null,library=null,tab="builtin",lastFocus=null,working=false,autoBusy=false,corePromise=null,reactorPromise=null,vaultPromise=null,vaultApi=null;
     const pending=new Set();
     const showError=error=>{
       const value=error?.message||String(error);
@@ -233,6 +275,10 @@ RED.plugins.registerPlugin(PLUGIN,{
       for(const b of overlay.querySelectorAll("[data-ada-tab]"))
         b.classList.toggle("selected",b.dataset.adaTab===tab);
       cards.replaceChildren();
+      if(tab==="vault"){
+        if(vaultApi)vaultApi.render(cards,$("ada-native-search").value);
+        return;
+      }
       const entries=items();
       if(!entries.length){
         const empty=document.createElement("p");empty.textContent="Ничего не найдено";cards.appendChild(empty);
@@ -272,12 +318,22 @@ RED.plugins.registerPlugin(PLUGIN,{
         }));
       return reactorPromise;
     }
+    async function ensureVault(){
+      if(!vaultPromise) vaultPromise=import(new URL(VAULT_ASSET,document.baseURI).href)
+        .then(module=>module.startNativeVault({
+          RED,overlay,core:loaded,writable,status,error:showError,
+          refresh:render,hideDialog:close
+        }));
+      vaultApi=await vaultPromise;
+      return vaultApi;
+    }
     async function open(){
       if(working)return;
       working=true;
       try{
         await ensureLoaded();
         await ensureReactor();
+        await ensureVault();
         lastFocus=document.activeElement;
         overlay.hidden=false;render();$("ada-native-search").focus();
       }catch(error){showError(error);}
@@ -337,7 +393,7 @@ RED.plugins.registerPlugin(PLUGIN,{
     $("ada-native-search").addEventListener("input",render);
     $("ada-native-stamp").addEventListener("change",render);
     for(const item of overlay.querySelectorAll("[data-ada-tab]"))
-      item.addEventListener("click",()=>{tab=item.dataset.adaTab;render();});
+      item.addEventListener("click",()=>{tab=item.dataset.adaTab;if(tab==="vault")$("ada-vault-panel").open=true;render();});
     $("ada-native-save").addEventListener("click",()=>{saveSelected().catch(showError);});
     $("ada-native-copy").addEventListener("click",()=>{cloneSelected().catch(showError);});
     $("ada-native-link").addEventListener("click",()=>{linkSelected().catch(showError);});
