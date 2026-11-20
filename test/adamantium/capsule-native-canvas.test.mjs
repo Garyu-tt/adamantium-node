@@ -204,3 +204,86 @@ test("native draft layer intercepts dangerous flow shortcuts and unregisters on 
  controller.close();
  assert.equal(b.listeners.keydown.length,0);
 });
+
+test("Q from a focused toolbar button cannot open native Construct behind capsule lens",()=>{
+ const b=fakeBrowser(),controller=mountNativeCapsuleWorkspace(b);
+ try{
+  let stopped=false,prevented=false;
+  b.windowRef.emit("keydown",{
+   key:"q",ctrlKey:false,metaKey:false,altKey:false,target:{tagName:"BUTTON"},
+   stopImmediatePropagation(){stopped=true;},stopPropagation(){},
+   preventDefault(){prevented=true;}
+  });
+  assert.equal(stopped,true,"Q must not reach native Construct document listener");
+  assert.equal(prevented,true,"Q should not activate a second editing mode");
+  stopped=false;prevented=false;
+  b.windowRef.emit("keydown",{
+   key:"q",ctrlKey:false,metaKey:false,altKey:false,target:{tagName:"INPUT"},
+   stopImmediatePropagation(){stopped=true;},stopPropagation(){},
+   preventDefault(){prevented=true;}
+  });
+  assert.equal(stopped,false,"editable input must keep text keyboard events");
+  assert.equal(prevented,false,"typing q is allowed in form controls");
+ }finally{controller.close();}
+});
+
+test("stale cross-document snapshot rejects edits without overwriting newer localStorage",()=>{
+ const o=modelWithOpenWire(),b=fakeBrowser(o.data);
+ const c=mountNativeCapsuleWorkspace(b);
+ try{
+  const newer=CapsuleStudio.restore(o.data.model);
+  newer.place(o.root,newer.graph(o.root).instances[0].definitionId);
+  const external=JSON.stringify({model:newer.snapshot(),positions:o.data.positions});
+  b.store.set(STORAGE,external); // Another document changed storage; no storage event yet.
+  actionHit(b.stage,"+ Capsule").emit("click");
+  assert.equal(b.store.get(STORAGE),external,"stale editor cannot overwrite newer document");
+  assert.equal(c.inspect().nodes,2,"rejected change must restore previous local model");
+  b.windowRef.emit("storage",{key:STORAGE});
+  assert.equal(c.inspect().nodes,3,"explicit storage refresh installs external version");
+  actionHit(b.stage,"+ Capsule").emit("click");
+  assert.equal(c.inspect().nodes,4,"fresh editor can now save a new capsule");
+ }finally{c.close();}
+});
+
+test("failed quota write rolls back capsule creation and keeps existing draft",()=>{
+ const o=modelWithOpenWire(),b=fakeBrowser(o.data),before=b.store.get(STORAGE);
+ const c=mountNativeCapsuleWorkspace(b);
+ try{
+  const write=b.storage.setItem;
+  b.storage.setItem=()=>{throw Error("simulated quota failure")};
+  actionHit(b.stage,"+ Capsule").emit("click");
+  assert.equal(b.store.get(STORAGE),before);
+  assert.equal(c.inspect().nodes,2,"optimistic new capsule cannot survive failed persistence");
+  b.storage.setItem=write;
+  actionHit(b.stage,"+ Capsule").emit("click");
+  assert.equal(c.inspect().nodes,3,"next successful save can proceed");
+ }finally{c.close();}
+});
+
+test("failed drag persistence restores previous graph-scoped position",()=>{
+ const o=modelWithOpenWire(),b=fakeBrowser(o.data),before=b.store.get(STORAGE);
+ const c=mountNativeCapsuleWorkspace(b);
+ const card=()=>b.stage.querySelector('[data-instance-id="'+o.a+'"]');
+ try{
+  const oldTransform=card().getAttribute("transform");
+  const handle=b.stage.querySelector('[data-drag-handle="'+o.a+'"]');
+  handle.emit("pointerdown",{button:0,clientX:120,clientY:150});
+  b.windowRef.emit("pointermove",{clientX:250,clientY:175});
+  assert.notEqual(card().getAttribute("transform"),oldTransform);
+  b.storage.setItem=()=>{throw Error("simulated storage refusal")};
+  b.windowRef.emit("pointerup",{});
+  assert.equal(card().getAttribute("transform"),oldTransform,"failed move must visually roll back");
+  assert.equal(b.store.get(STORAGE),before);
+ }finally{c.close();}
+});
+
+test("corrupt existing draft cannot be replaced by demo capsule edits",()=>{
+ const b=fakeBrowser();
+ b.store.set(STORAGE,"{invalid");
+ const c=mountNativeCapsuleWorkspace(b);
+ try{
+  actionHit(b.stage,"+ Capsule").emit("click");
+  assert.equal(b.store.get(STORAGE),"{invalid");
+  assert.equal(c.inspect().nodes,2);
+ }finally{c.close();}
+});

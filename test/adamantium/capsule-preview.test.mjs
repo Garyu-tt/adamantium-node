@@ -2,19 +2,23 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
+import {readFile} from "node:fs/promises";
 
 test("Capsule Studio preview serves only static editor assets on loopback",async()=>{
   const program=fileURLToPath(new URL("../../adamantium/capsule-preview-server.mjs",import.meta.url));
   const child=spawn(process.execPath,[program,"0"],{stdio:["ignore","pipe","pipe"],windowsHide:true});
-  let stderr="";
+  let stderr="",stdout="";
   child.stderr.on("data",chunk=>{stderr+=chunk.toString();});
   try{
     const port=await new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(new Error("server start timeout: "+stderr)),8000);
+      const timer=setTimeout(()=>reject(new Error("server start timeout: "+stderr)),
+        process.platform==="win32"?24000:12000);
       child.on("error",error=>{clearTimeout(timer);reject(error);});
       child.on("exit",code=>{clearTimeout(timer);reject(new Error("server exited "+code+": "+stderr));});
       child.stdout.on("data",chunk=>{
-        const match=chunk.toString().match(/http:\/\/127\.0\.0\.1:(\d+)/);
+        // Windows pipes may split a single listening URL across data events.
+        stdout=(stdout+chunk.toString()).slice(-4096);
+        const match=stdout.match(/http:\/\/127\.0\.0\.1:(\d+)/);
         if(match){clearTimeout(timer);resolve(Number(match[1]));}
       });
     });
@@ -27,6 +31,9 @@ test("Capsule Studio preview serves only static editor assets on loopback",async
     const model=await fetch(base+"/capsule-studio.mjs");
     assert.equal(model.status,200);
     assert.match(await model.text(),/export class CapsuleStudio/);
+    const construct=await fetch(base+"/construct-engine.mjs");
+    assert.equal(construct.status,200);
+    assert.match(await construct.text(),/export class ConstructEngine/);
     const app=await fetch(base+"/app.mjs");
     assert.equal(app.status,200);
     assert.match(await app.text(),/new CapsuleStudio/);
@@ -40,4 +47,15 @@ test("Capsule Studio preview serves only static editor assets on loopback",async
   } finally {
     child.kill();
   }
+});
+
+test("Capsule R08 workspace is nonzero-height and exposes Construct plus IR controls",async()=>{
+  const file=fileURLToPath(new URL("../../adamantium/capsule-preview/index.html",import.meta.url));
+  const html=await readFile(file,"utf8");
+  assert.match(html,/Capsule Studio R08/);
+  // Without flex sizing the absolutely positioned #canvas has height 0.
+  assert.match(html,/#workspace\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;/);
+  assert.match(html,/#canvas\s*\{position:absolute;inset:0;overflow:auto/);
+  assert.match(html,/id="constructMenuToggle"/);
+  assert.match(html,/id="exportIR"/);
 });

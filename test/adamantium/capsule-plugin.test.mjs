@@ -14,7 +14,7 @@ test("Node-RED editor package declares a real editor plugin (no executable runti
  assert.equal(pkg.scripts?.postinstall,undefined);
 });
 test("packaged resources match single source-of-truth files byte-for-byte",async()=>{
- for(const path of ["capsule-studio.mjs","capsule-extract.mjs","capsule-ir-proposal.mjs","editor-projection.mjs","capsule-native-layout.mjs","capsule-native-canvas.mjs"]){
+ for(const path of ["capsule-studio.mjs","capsule-extract.mjs","capsule-ir-proposal.mjs","editor-projection.mjs","construct-engine.mjs","capsule-native-layout.mjs","capsule-native-canvas.mjs"]){
   assert.equal(await load("resources/"+path),await load(path,root));
  }
  for(const path of ["index.html","app.mjs"]){

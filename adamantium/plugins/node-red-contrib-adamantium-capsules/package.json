@@ -1,8 +1,8 @@
 {
   "name": "node-red-contrib-adamantium-capsules",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "Editor-only Capsule Studio sidebar integration for Adamantium-node (no code execution)",
+  "description": "Editor-only recursive Capsule Studio R08, native SVG lens and Construct Q-menu (no execution)",
   "license": "Apache-2.0",
   "keywords": [
     "node-red",
@@ -21,6 +21,6 @@
     "resources"
   ],
   "scripts": {
-    "check": "node --check resources/preview/app.mjs && node --check resources/capsule-studio.mjs && node --check resources/capsule-extract.mjs"
+    "check": "node --check resources/preview/app.mjs && node --check resources/capsule-studio.mjs && node --check resources/capsule-extract.mjs && node --check resources/construct-engine.mjs && node --check resources/capsule-native-layout.mjs && node --check resources/capsule-native-canvas.mjs"
   }
 }
