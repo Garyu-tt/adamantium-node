@@ -12,12 +12,13 @@ function demand(ok,message){if(!ok)throw new TypeError(message);}
 function cleanTitle(title){demand(typeof title==="string"&&title.trim().length>0&&title.length<=128,"invalid capsule title");return title.trim();}
 function clone(x){return JSON.parse(JSON.stringify(x));}
 function rollback(studio,original){
-  const restored=CapsuleStudio.restore(original);
-  studio.seq=restored.seq;
-  studio.graphs=restored.graphs;
-  studio.definitions=restored.definitions;
-  studio.rootGraphId=restored.rootGraphId;
-  studio.favorites=restored.favorites;
+  // Use the original deep JSON snapshot: rollback must remain possible even
+  // if a definition was corrupted or removed before the failed operation.
+  studio.seq=original.seq;
+  studio.graphs=original.graphs;
+  studio.definitions=original.definitions;
+  studio.rootGraphId=original.rootGraphId;
+  studio.favorites=original.favorites;
 }
 function transaction(studio,operation){
   const previous=studio.snapshot();
