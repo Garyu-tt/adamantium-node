@@ -98,10 +98,13 @@ export class ConstructEngine {
     return {studio:this.studio.snapshot(),templates:this.templates.snapshot()};
   }
   resolve(value,results){
-    if(typeof value==="string"&&/^@[0-9]+$/.test(value)){
-      const result=results[Number(value.slice(1))];
-      requireIt(result&&(result.instanceId||result.id),"reference to missing command result");
-      return result.instanceId||result.id;
+    if(typeof value==="string"&&/^@[0-9]+(?:\.(?:graphId|instanceId|id))?$/.test(value)){
+      const match=value.match(/^@([0-9]+)(?:\.(graphId|instanceId|id))?$/);
+      const result=results[Number(match[1])];
+      const key=match[2]||"instanceId";
+      const resolved=result?.[key]||(match[2]?null:result?.id);
+      requireIt(typeof resolved==="string","reference to missing command result");
+      return resolved;
     }
     return value;
   }
@@ -157,7 +160,7 @@ export class ConstructEngine {
     const value=x=>this.resolve(x,results);
     switch(command.type){
       case "place":{
-        const graphId=id(command.graphId,"graph ID");
+        const graphId=id(value(command.graphId),"graph ID");
         let definitionId=id(command.definitionId,"definition ID");
         const version=command.version||1;
         requireIt(Number.isSafeInteger(version)&&version>0,"invalid definition version");
@@ -175,7 +178,7 @@ export class ConstructEngine {
         const mode=command.mode||"instance";
         requireIt(["instance","fork"].includes(mode),"invalid template placement mode");
         const templateId=id(command.templateId,"template ID");
-        const created=this.templates.place(this.studio,id(command.graphId,"graph ID"),templateId);
+        const created=this.templates.place(this.studio,id(value(command.graphId),"graph ID"),templateId);
         if(mode==="fork")this.detachSubtree(created.graphId);
         else this.linked[created.graphId]={templateId,version:1};
         return {...created,kind:"capsule",reuse:mode};
@@ -270,7 +273,16 @@ export class ConstructEngine {
     if(this.processed.includes(event.id))return {skipped:true,revision:this.revision,results:[]};
     const matching=Object.values(this.rules).filter(r=>r.enabled&&r.eventType===event.type);
     requireIt(matching.length<=8,"too many rules for one event");
-    const commands=matching.flatMap(r=>r.commands);
+    const commands=matching.flatMap(r=>r.commands).map(command=>{
+      const out=clone(command);
+      if(out.graphId==="@event.graphId"){
+        requireIt(plain(event.context),"event graph context required");
+        const graphId=id(event.context.graphId,"event graph");
+        this.studio.graph(graphId);
+        out.graphId=graphId;
+      }
+      return out;
+    });
     if(commands.length===0)return {skipped:true,revision:this.revision,results:[]};
     return this.apply(limited(commands),{expectedRevision:this.revision,eventId:event.id});
   }

@@ -151,9 +151,18 @@ function addCapsule() {
   const title=window.prompt("Название вложенного графа","Новый контейнер");
   if(title===null)return;
   doAction(()=>{
-    const c=studio.createCapsule(activeGraph,title);
+    const rules=Object.values(construct.rules).filter(r=>r.enabled&&r.eventType==="ui:capsule-created");
+    if(rules.length>8)throw new TypeError("Слишком много автоматических правил на событие");
+    const commands=[{type:"capsule",graphId:activeGraph,title},
+      ...rules.flatMap(rule=>rule.commands.map(command=>{
+        const copy={...command};
+        if(copy.graphId==="@event.graphId")copy.graphId="@0.graphId";
+        return copy;
+      }))];
+    const result=construct.apply(commands,{eventId:studio.next("event")});
+    const c=result.results[0];
     position(activeGraph,c.instanceId);
-    message("Создан вложенный граф. Дважды кликни по карточке, чтобы войти.");
+    message("Создан вложенный граф; автоматически построено "+(result.results.length-1)+" дополнительных элементов.");
   });
 }
 function enter(id) {
@@ -468,6 +477,22 @@ function refreshConstructMenu() {
         :{type:"template",graphId:activeGraph,templateId:item.id,mode};
       doConstruct([cmd],"Создан "+item.name+" ("+(mode==="fork"?"независимый форк":"общая реализация")+")");
     }));
+    if(item.kind==="definition") {
+      const ruleId="auto_"+item.id;
+      if(ruleId.length<=96) {
+        const existing=construct.rules[ruleId];
+        card.append(button(existing?.enabled?"Авто ✓":"Авто +",()=>doAction(()=>{
+          const next=existing?{...existing,enabled:!existing.enabled}:{
+            id:ruleId,eventType:"ui:capsule-created",enabled:true,
+            commands:[{type:"place",graphId:"@event.graphId",definitionId:item.id,
+              version:Math.max(...Object.keys(studio.definitions[item.id].versions).map(Number))}]
+          };
+          construct.addRule(next);
+          message(next.enabled?"Автодобавление в новые контейнеры включено.":"Автодобавление отключено.");
+          refreshConstructMenu();
+        })));
+      }
+    }
     host.append(card);
   }
   if(matches.length>200)host.append(el("small","muted","Показаны первые 200 совпадений. Уточни поиск."));

@@ -21,7 +21,10 @@ test("Capsule Studio preview serves only static editor assets on loopback",async
     const base="http://127.0.0.1:"+port;
     const index=await fetch(base+"/");
     assert.equal(index.status,200);
-    assert.match(await index.text(),/Палитра переиспользуемых нод/);
+    const page=await index.text();
+    assert.match(page,/Палитра переиспользуемых нод/);
+    assert.match(page,/id="constructDialog"/);
+    assert.match(page,/Q · Конструктор/);
     assert.equal(index.headers.get("x-content-type-options"),"nosniff");
     assert.match(index.headers.get("content-security-policy"),/connect-src 'none'/);
     const model=await fetch(base+"/capsule-studio.mjs");

@@ -43,3 +43,6 @@ Run offline with built-in Node.js test runner:
 Preview server:
   node adamantium/capsule-preview-server.mjs 1886
 Do not install on a production userDir. For real Node-RED plugin smoke use a disposable safe-mode userDir only.
+
+## Reactive editor example (R01)
+In the Q menu a definition has an Auto + toggle. When enabled, creating a new nested capsule from the Capsule Studio toolbar creates that capsule and its configured source-only microprogram in one atomic batch. The rule uses the typed placeholder @event.graphId and resolves it to the new child graph; event replay is deduplicated. These are Capsule Studio UI events, NOT Node-RED production tab events or runtime events. No automatic deploy occurs.

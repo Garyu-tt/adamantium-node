@@ -119,3 +119,21 @@ test("bounded command budget rejects untrusted large mutation",()=>{
  const {root,source,engine}=setup();
  assert.throws(()=>engine.apply(Array.from({length:129},()=>({type:"place",graphId:root,definitionId:source.id}))),/1..128/);
 });
+
+test("event-bound rule dynamically creates a node inside the new nested graph",()=>{
+  const {studio,root,source,engine}=setup();
+  engine.addRule({id:"on_capsule_created",eventType:"ui:capsule-created",enabled:true,
+    commands:[{type:"place",graphId:"@event.graphId",definitionId:source.id}]});
+  const result=engine.apply([
+    {type:"capsule",graphId:root,title:"New capsule"},
+    {type:"place",graphId:"@0.graphId",definitionId:source.id}
+  ],{eventId:"capsule_event_1"});
+  assert.equal(result.results.length,2);
+  assert.equal(studio.graph(result.results[0].graphId).instances[0].id,result.results[1].instanceId);
+  const created=studio.createCapsule(root,"Second capsule");
+  const fired=engine.dispatch({id:"capsule_event_2",type:"ui:capsule-created",context:{graphId:created.graphId}});
+  assert.equal(fired.results.length,1);
+  assert.equal(studio.graph(created.graphId).instances.length,1);
+  assert.equal(engine.dispatch({id:"capsule_event_2",type:"ui:capsule-created",context:{graphId:created.graphId}}).skipped,true);
+  assert.throws(()=>engine.dispatch({id:"capsule_event_3",type:"ui:capsule-created",context:{graphId:"not_existing"}}),/graph not found/);
+});
