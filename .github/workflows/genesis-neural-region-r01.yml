@@ -1,0 +1,25 @@
+name: GENESIS Neural Region Designer R01
+on:
+  pull_request:
+    paths:
+      - 'experiments/genesis/neural-region-designer-r01.zip'
+      - 'docs/adamantium/GENESIS-NEURAL-REGION-DESIGNER-R01.md'
+      - '.github/workflows/genesis-neural-region-r01.yml'
+  workflow_dispatch:
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Extract experimental plugin
+        run: |
+          mkdir -p /tmp/genesis-designer
+          unzip -q experiments/genesis/neural-region-designer-r01.zip -d /tmp/genesis-designer
+      - name: Validate syntax and model tests
+        working-directory: /tmp/genesis-designer/node-red-contrib-genesis-neural-region
+        run: |
+          node --check neural-region.js
+          npm test

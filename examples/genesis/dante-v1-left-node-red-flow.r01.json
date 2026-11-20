@@ -1,0 +1,113 @@
+[
+  {
+    "id": "dantev1r010000001",
+    "type": "tab",
+    "label": "GENESIS | 07 Dante V1 Designer",
+    "disabled": false,
+    "info": "Experimental design-only neural region. No engine deployment. Six layers, 12 cell populations, 12 declarative projections, original genome and typed Graph IR."
+  },
+  {
+    "id": "dantev1r010000007",
+    "type": "comment",
+    "z": "dantev1r010000001",
+    "name": "DANTE V1 • DESIGN ONLY • 1,000,000 addresses / 896 active budget / 500M virtual cap",
+    "info": "Percentages and connectivity probabilities are illustrative, not measured. No neurons actually materialize here.",
+    "x": 540,
+    "y": 80,
+    "wires": []
+  },
+  {
+    "id": "dantev1r010000002",
+    "type": "inject",
+    "z": "dantev1r010000001",
+    "name": "Validate & publish Dante V1 region",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "repeat": "",
+    "crontab": "",
+    "once": false,
+    "onceDelay": 0.1,
+    "topic": "",
+    "payload": "",
+    "payloadType": "date",
+    "x": 175,
+    "y": 180,
+    "wires": [
+      [
+        "dantev1r010000003"
+      ]
+    ]
+  },
+  {
+    "id": "dantev1r010000003",
+    "type": "genesis-neural-region",
+    "z": "dantev1r010000001",
+    "name": "Dante V1 · LEFT · 6 layers",
+    "region": "{\"schema\":\"mechanicus.neural-region/1\",\"id\":\"dante.visual.v1.left\",\"identity\":{\"name\":\"Dante — Experimental V1 (left)\",\"profile\":\"biological-spiking\",\"atlas_ref\":null,\"classification\":\"experimental\",\"species\":\"synthetic\",\"notes\":\"Engineering hypothesis; not a measured biological V1 atlas.\"},\"geometry\":{\"kind\":\"cortical-sheet\",\"hemisphere\":\"left\",\"volume_mm3\":null,\"thickness_um\":null,\"orientation\":null},\"neurons\":{\"total\":1000000,\"allocation\":\"percentages\"},\"layers\":[{\"id\":\"L1\",\"name\":\"I\",\"share\":3,\"populations\":[{\"id\":\"L1.E\",\"kind\":\"excitatory\",\"share\":0.5,\"cell_model\":\"AdEx\",\"receptors\":[{\"type\":\"AMPA\",\"compartment\":\"dendrite\"},{\"type\":\"NMDA\",\"compartment\":\"dendrite\"},{\"type\":\"GABA-A\",\"compartment\":\"soma\"}],\"neurotransmitter_output\":\"glutamate\",\"provenance\":\"illustrative\"},{\"id\":\"L1.I\",\"kind\":\"inhibitory\",\"share\":0.5,\"cell_model\":\"Izhikevich\",\"receptors\":[{\"type\":\"GABA-A\",\"compartment\":\"soma\"},{\"type\":\"AMPA\",\"compartment\":\"dendrite\"}],\"neurotransmitter_output\":\"GABA\",\"provenance\":\"illustrative\"}]},{\"id\":\"L2\",\"name\":\"II\",\"share\":14,\"populations\":[{\"id\":\"L2.E\",\"kind\":\"excitatory\",\"share\":0.76,\"cell_model\":\"AdEx\",\"receptors\":[{\"type\":\"AMPA\",\"compartment\":\"dendrite\"},{\"type\":\"NMDA\",\"compartment\":\"dendrite\"},{\"type\":\"GABA-A\",\"compartment\":\"soma\"}],\"neurotransmitter_output\":\"glutamate\",\"provenance\":\"illustrative\"},{\"id\":\"L2.I\",\"kind\":\"inhibitory\",\"share\":0.24,\"cell_model\":\"Izhikevich\",\"receptors\":[{\"type\":\"GABA-A\",\"compartment\":\"soma\"},{\"type\":\"AMPA\",\"compartment\":\"dendrite\"}],\"neurotransmitter_output\":\"GABA\",\"provenance\":\"illustrative\"}]},{\"id\":\"L3\",\"name\":\"III\",\"share\":24,\"populations\":[{\"id\":\"L3.E\",\"kind\":\"excitatory\",\"share\":0.76,\"cell_model\":\"AdEx\",\"receptors\":[{\"type\":\"AMPA\",\"compartment\":\"dendrite\"},{\"type\":\"NMDA\",\"compartment\":\"dendrite\"},{\"type\":\"GABA-A\",\"compartment\":\"soma\"}],\"neurotransmitter_output\":\"glutamate\",\"provenance\":\"illustrative\"},{\"id\":\"L3.I\",\"kind\":\"inhibitory\",\"share\":0.24,\"cell_model\":\"Izhikevich\",\"receptors\":[{\"type\":\"GABA-A\",\"compartment\":\"soma\"},{\"type\":\"AMPA\",\"compartment\":\"dendrite\"}],\"neurotransmitter_output\":\"GABA\",\"provenance\":\"illustrative\"}]},{\"id\":\"L4\",\"name\":\"IV\",\"share\":31,\"populations\":[{\"id\":\"L4.E\",\"kind\":\"excitatory\",\"share\":0.8,\"cell_model\":\"AdEx\",\"receptors\":[{\"type\":\"AMPA\",\"compartment\":\"dendrite\"},{\"type\":\"NMDA\",\"compartment\":\"dendrite\"},{\"type\":\"GABA-A\",\"compartment\":\"soma\"}],\"neurotransmitter_output\":\"glutamate\",\"provenance\":\"illustrative\"},{\"id\":\"L4.I\",\"kind\":\"inhibitory\",\"share\":0.19999999999999996,\"cell_model\":\"Izhikevich\",\"receptors\":[{\"type\":\"GABA-A\",\"compartment\":\"soma\"},{\"type\":\"AMPA\",\"compartment\":\"dendrite\"}],\"neurotransmitter_output\":\"GABA\",\"provenance\":\"illustrative\"}],\"sublayers\":[{\"id\":\"L4.a\",\"name\":\"IVa\",\"share\":35,\"populations\":[]},{\"id\":\"L4.b\",\"name\":\"IVb\",\"share\":65,\"populations\":[]}]},{\"id\":\"L5\",\"name\":\"V\",\"share\":18,\"populations\":[{\"id\":\"L5.E\",\"kind\":\"excitatory\",\"share\":0.76,\"cell_model\":\"AdEx\",\"receptors\":[{\"type\":\"AMPA\",\"compartment\":\"dendrite\"},{\"type\":\"NMDA\",\"compartment\":\"dendrite\"},{\"type\":\"GABA-A\",\"compartment\":\"soma\"}],\"neurotransmitter_output\":\"glutamate\",\"provenance\":\"illustrative\"},{\"id\":\"L5.I\",\"kind\":\"inhibitory\",\"share\":0.24,\"cell_model\":\"Izhikevich\",\"receptors\":[{\"type\":\"GABA-A\",\"compartment\":\"soma\"},{\"type\":\"AMPA\",\"compartment\":\"dendrite\"}],\"neurotransmitter_output\":\"GABA\",\"provenance\":\"illustrative\"}]},{\"id\":\"L6\",\"name\":\"VI\",\"share\":10,\"populations\":[{\"id\":\"L6.E\",\"kind\":\"excitatory\",\"share\":0.76,\"cell_model\":\"AdEx\",\"receptors\":[{\"type\":\"AMPA\",\"compartment\":\"dendrite\"},{\"type\":\"NMDA\",\"compartment\":\"dendrite\"},{\"type\":\"GABA-A\",\"compartment\":\"soma\"}],\"neurotransmitter_output\":\"glutamate\",\"provenance\":\"illustrative\"},{\"id\":\"L6.I\",\"kind\":\"inhibitory\",\"share\":0.24,\"cell_model\":\"Izhikevich\",\"receptors\":[{\"type\":\"GABA-A\",\"compartment\":\"soma\"},{\"type\":\"AMPA\",\"compartment\":\"dendrite\"}],\"neurotransmitter_output\":\"GABA\",\"provenance\":\"illustrative\"}]}],\"projections\":[{\"id\":\"p01\",\"source\":\"dante.thalamus.lgn.E\",\"target\":\"L4.E\",\"category\":\"external-input\",\"rule\":{\"mode\":\"topographic\",\"seed\":43,\"delay_ms\":3.5,\"definition_status\":\"declarative-only\"},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"},{\"id\":\"p02\",\"source\":\"L4.E\",\"target\":\"L2.E\",\"category\":\"interlayer\",\"rule\":{\"mode\":\"probabilistic\",\"seed\":44,\"delay_ms\":3.5,\"probability\":0.02},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"},{\"id\":\"p03\",\"source\":\"L4.E\",\"target\":\"L3.E\",\"category\":\"interlayer\",\"rule\":{\"mode\":\"probabilistic\",\"seed\":45,\"delay_ms\":3.5,\"probability\":0.018},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"},{\"id\":\"p04\",\"source\":\"L2.E\",\"target\":\"L3.E\",\"category\":\"interlayer\",\"rule\":{\"mode\":\"probabilistic\",\"seed\":46,\"delay_ms\":3.5,\"probability\":0.014},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"},{\"id\":\"p05\",\"source\":\"L3.E\",\"target\":\"L5.E\",\"category\":\"interlayer\",\"rule\":{\"mode\":\"probabilistic\",\"seed\":47,\"delay_ms\":3.5,\"probability\":0.011},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"},{\"id\":\"p06\",\"source\":\"L5.E\",\"target\":\"L6.E\",\"category\":\"interlayer\",\"rule\":{\"mode\":\"probabilistic\",\"seed\":48,\"delay_ms\":3.5,\"probability\":0.008},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"},{\"id\":\"p07\",\"source\":\"L6.E\",\"target\":\"L4.E\",\"category\":\"interlayer-feedback\",\"rule\":{\"mode\":\"probabilistic\",\"seed\":49,\"delay_ms\":3.5,\"probability\":0.012},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"},{\"id\":\"p08\",\"source\":\"L3.I\",\"target\":\"L3.E\",\"category\":\"local-inhibitory\",\"rule\":{\"mode\":\"probabilistic\",\"seed\":50,\"delay_ms\":1.5,\"probability\":0.016},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"},{\"id\":\"p09\",\"source\":\"L4.I\",\"target\":\"L4.E\",\"category\":\"local-inhibitory\",\"rule\":{\"mode\":\"probabilistic\",\"seed\":51,\"delay_ms\":1.5,\"probability\":0.02},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"},{\"id\":\"p10\",\"source\":\"L5.I\",\"target\":\"L5.E\",\"category\":\"local-inhibitory\",\"rule\":{\"mode\":\"probabilistic\",\"seed\":52,\"delay_ms\":1.5,\"probability\":0.017},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"},{\"id\":\"p11\",\"source\":\"L2.E\",\"target\":\"L2.I\",\"category\":\"local\",\"rule\":{\"mode\":\"probabilistic\",\"seed\":53,\"delay_ms\":1.5,\"probability\":0.013},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"},{\"id\":\"p12\",\"source\":\"L5.E\",\"target\":\"dante.visual.v2.left.E\",\"category\":\"external-output\",\"rule\":{\"mode\":\"genetic\",\"seed\":54,\"delay_ms\":3.5,\"definition_status\":\"declarative-only\"},\"quantity\":{\"kind\":\"synaptic_contacts\"},\"synapse_model\":\"chemical\",\"notes\":\"Illustrative topology; actual synaptic contact count unknown.\"}],\"chemistry\":{\"mediator_catalog\":[\"glutamate\",\"GABA\",\"dopamine\",\"serotonin\",\"acetylcholine\",\"norepinephrine\"],\"custom_receptors\":[],\"notes\":\"Receptor profiles are schematic, not calibrated kinetics.\"},\"development\":{\"neurogenesis\":{\"enabled\":false,\"rate_per_day\":0},\"synaptogenesis\":{\"enabled\":true,\"model\":\"genome-conditional\"},\"pruning\":{\"enabled\":true,\"model\":\"activity-dependent\"},\"structural_plasticity\":{\"enabled\":true},\"homeostasis\":{\"enabled\":true},\"lineage\":\"experimental\"},\"genome\":{\"source\":{\"id\":\"genesis.dante.visual.v1.left\",\"revision\":1,\"kind\":\"inherited\",\"status\":\"prototype\"},\"acquired\":[],\"mutation_bounds\":{\"layers[].share\":{\"min\":0,\"max\":100,\"unit\":\"percent\"},\"projections[].rule.probability\":{\"min\":0,\"max\":1,\"unit\":\"fraction\"}},\"epigenetics\":[]},\"runtime\":{\"mode\":\"design-only\",\"backend\":\"external\",\"active_budget\":896,\"virtual_address_limit\":500000000,\"bytes_per_neuron\":64,\"bytes_per_synapse\":24,\"backend_selection\":\"CPU-first\"},\"provenance\":{\"classification\":\"experimental\",\"measured\":false,\"source_refs\":[],\"seed\":42,\"created_for\":\"Dante Neural Region Designer R01\",\"all_connectivity_parameters\":\"illustrative\"},\"extensions\":{\"mechanicus.dante.session\":{\"project\":\"Mikoshi Simulacrum\",\"external_connections\":[\"dante.thalamus.lgn.E\",\"dante.visual.v2.left.E\"],\"nested_scale_model\":\"region > layer > sublayer > population > neuron > compartment > receptor\",\"not_materialized\":true}}}",
+    "x": 510,
+    "y": 180,
+    "wires": [
+      [
+        "dantev1r010000004",
+        "dantev1r010000006"
+      ]
+    ]
+  },
+  {
+    "id": "dantev1r010000004",
+    "type": "function",
+    "z": "dantev1r010000001",
+    "name": "Validate layer / genome / projection contracts",
+    "func": "const g=msg.genesis;\nif (!g || g.execution !== 'not-started' || !g.validation?.ok) {\n  node.error('GENESIS R01 contract missing or invalid', msg); return null;\n}\nconst r=g.region, layers=r.layers || [], projs=r.projections || [];\nconst pct=layers.reduce((s,l)=>s+Number(l.share||0),0);\nconst ids=new Set(layers.flatMap(l=>(l.populations||[]).map(p=>p.id)));\nconst missing=projs.filter(p=>[p.source,p.target].some(x=>!ids.has(x)&&!x.startsWith('dante.')));\nif(Math.abs(pct-100)>1e-6 || missing.length || r.neurons.total!==1000000 || layers.length!==6 || projs.length!==12){\n  node.error('GENESIS R01 invariant violated: layer shares/projections/virtual counts',msg);return null;\n}\nconst shares=layers.map(l=>({id:l.id,percent:l.share,neurons:Math.floor(r.neurons.total*l.share/100),populations:l.populations?.length||0}));\nmsg.payload={event:'dante_neural_region_validated',region_id:r.id,mode:g.execution,region_neurons:r.neurons.total,active_budget:r.runtime.active_budget,virtual_address_limit:r.runtime.virtual_address_limit,layer_count:layers.length,population_count:layers.reduce((s,l)=>s+(l.populations?.length||0),0),projection_count:projs.length,layer_percent_total:pct,genome_source:r.genome?.source,allocated_layers:shares,graph_ir:{schema:g.graph_ir.schema,nodes:g.graph_ir.nodes.length,edges:g.graph_ir.edges.length},resource_lower_bound:g.resources,provenance:r.provenance};\nnode.status({fill:'green',shape:'dot',text:'V1 ✓ 6 layers / 12 projections'});\nreturn msg;",
+    "outputs": 1,
+    "timeout": 0,
+    "noerr": 0,
+    "initialize": "",
+    "finalize": "",
+    "libs": [],
+    "x": 845,
+    "y": 180,
+    "wires": [
+      [
+        "dantev1r010000005"
+      ]
+    ]
+  },
+  {
+    "id": "dantev1r010000005",
+    "type": "debug",
+    "z": "dantev1r010000001",
+    "name": "DANTE V1 | verified summary",
+    "active": true,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "payload",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 1150,
+    "y": 180,
+    "wires": []
+  },
+  {
+    "id": "dantev1r010000006",
+    "type": "debug",
+    "z": "dantev1r010000001",
+    "name": "DANTE V1 | complete typed GENESIS record",
+    "active": false,
+    "tosidebar": true,
+    "console": false,
+    "tostatus": false,
+    "complete": "genesis",
+    "targetType": "msg",
+    "statusVal": "",
+    "statusType": "auto",
+    "x": 845,
+    "y": 245,
+    "wires": []
+  }
+]
