@@ -1,0 +1,98 @@
+/* R07: all styles scoped to inert SVG overlay on native Node-RED canvas.
+   Draw from editor theme tokens; never recolor ordinary flow nodes. */
+.adamantium-capsule-native-wires,
+.adamantium-capsule-native-overlay {
+  font-family: var(--red-ui-primary-font-family, sans-serif);
+}
+.adamantium-capsule-native-wire {
+  stroke: var(--red-ui-primary-text-color, currentColor);
+  stroke-opacity: .68;
+  stroke-width: 2.4;
+  fill: none;
+  pointer-events: stroke;
+}
+.adamantium-capsule-native-body {
+  fill: var(--red-ui-primary-background-color);
+  stroke: var(--red-ui-primary-text-color);
+  stroke-opacity: .72;
+  stroke-width: 1.5;
+}
+.adamantium-capsule-native-body.is-capsule {
+  stroke: var(--red-ui-form-input-border-active-color, currentColor);
+  stroke-width: 2;
+}
+.adamantium-capsule-native-card.selected > .adamantium-capsule-native-body {
+  stroke: var(--red-ui-form-input-border-active-color, currentColor);
+  stroke-width: 3.5;
+}
+.adamantium-capsule-native-header {cursor: move;outline: none}
+.adamantium-capsule-native-header-bg {
+  fill: var(--red-ui-secondary-background-color);
+  stroke: none;
+}
+.adamantium-capsule-native-card-title {
+  fill: var(--red-ui-primary-text-color);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+.adamantium-capsule-native-subtitle {
+  fill: var(--red-ui-secondary-text-color);
+  font-size: 10px;
+  opacity: .92;
+  pointer-events: none;
+}
+.adamantium-capsule-native-port {cursor: crosshair}
+.adamantium-capsule-native-port-circle {
+  fill: var(--red-ui-primary-background-color);
+  stroke: var(--red-ui-primary-text-color);
+  stroke-width: 2.2;
+}
+.adamantium-capsule-native-port:hover .adamantium-capsule-native-port-circle,
+.adamantium-capsule-native-port-circle.active {
+  stroke: var(--red-ui-form-input-border-active-color, currentColor);
+  fill: var(--red-ui-form-input-border-active-color, currentColor);
+  stroke-width: 3.5;
+}
+.adamantium-capsule-native-heading {
+  fill: var(--red-ui-primary-text-color);
+  font-size: 15px;
+  font-weight: 650;
+}
+.adamantium-capsule-native-breadcrumb {
+  fill: var(--red-ui-primary-text-color);
+  font-size: 13px;
+}
+.adamantium-capsule-native-status {
+  fill: var(--red-ui-secondary-text-color);
+  font-size: 11px;
+}
+.adamantium-capsule-native-warning {
+  fill: var(--red-ui-primary-text-color);
+  font-size: 12px;
+  font-weight: 650;
+}
+.adamantium-capsule-native-control {cursor: pointer;outline: none}
+.adamantium-capsule-native-control-bg {
+  fill: var(--red-ui-secondary-background-color);
+  stroke: var(--red-ui-primary-text-color);
+  stroke-width: .5;
+}
+.adamantium-capsule-native-control:hover .adamantium-capsule-native-control-bg {
+  stroke: var(--red-ui-form-input-border-active-color, currentColor);
+  stroke-width: 2;
+}
+.adamantium-capsule-native-control-label {
+  fill: var(--red-ui-primary-text-color);
+  font-size: 11px;
+  pointer-events: none;
+}
+.adamantium-capsule-native-expand {
+  fill: var(--red-ui-primary-text-color);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.adamantium-capsule-native-overlay [role="button"]:focus-visible {
+  filter: drop-shadow(0 0 2px currentColor);
+}
