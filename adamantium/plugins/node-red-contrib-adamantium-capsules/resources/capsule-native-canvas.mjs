@@ -88,11 +88,13 @@ export class CapsuleNativeCanvas {
     this.graphId=null;this.activePort=null;this.selected=new Set();
     this.expandedSides=Object.create(null);
     this.dirty=true;this.layers=null;this.notice="Без исполнения · локальный слой";
+    this.storageLocked=false;
     this.drag=null;
     this.read();
   }
   read(){
     let loaded=false;
+    this.storageLocked=false;
     try{
       const text=this.storage.getItem(STORAGE_KEY);
       if(text){
@@ -104,7 +106,8 @@ export class CapsuleNativeCanvas {
         loaded=true;
       }
     }catch(err){
-      this.notice="Локальные данные повреждены/недоступны: временный граф; не перезаписывайте архив.";
+      this.storageLocked=true;
+      this.notice="Локальные данные повреждены/недоступны: сохранение заблокировано. Исправь через Sidebar.";
     }
     if(!loaded){
       const data=fallbackStudio();
@@ -115,9 +118,19 @@ export class CapsuleNativeCanvas {
     return loaded;
   }
   save(){
-    const state={model:this.studio.snapshot(),templates:this.library.snapshot(),positions:this.positions};
-    this.storage.setItem(STORAGE_KEY,JSON.stringify(state));
-    this.onUpdate({graphId:this.graphId,source:"capsule-native-canvas"});
+    if(this.storageLocked){
+      this.notice="Сохранение заблокировано: исправь повреждённые данные через Sidebar.";
+      return false;
+    }
+    try {
+      const state={model:this.studio.snapshot(),templates:this.library.snapshot(),positions:this.positions};
+      this.storage.setItem(STORAGE_KEY,JSON.stringify(state));
+      this.onUpdate({graphId:this.graphId,source:"capsule-native-canvas"});
+      return true;
+    }catch(error){
+      this.notice="Ошибка сохранения. Проверь доступный объём хранилища и экспортируй через Sidebar.";
+      return false;
+    }
   }
   setEnabled(value) {
     this.enabled=value===true;
@@ -126,7 +139,10 @@ export class CapsuleNativeCanvas {
   }
   isEnabled(){return this.enabled;}
   refresh(){
-    this.read();this.notice="Прочитан актуальный граф из библиотеки Sidebar.";
+    const loaded=this.read();
+    if(!this.storageLocked)
+      this.notice=loaded?"Прочитан актуальный граф из библиотеки Sidebar.":
+        "Создан локальный пример. Никаких потоков Node-RED не затронуто.";
     this.requestRedraw();
   }
   navigate(graphId) {
