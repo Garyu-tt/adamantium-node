@@ -248,7 +248,7 @@ export class CapsuleStudio {
         }
       }
     }
-    for (const [id,g] of Object.entries(raw.graphs)) {
+    for (const [id,g] of Object.entries(raw.graphs).sort((a,b)=>s.path(b[0]).length-s.path(a[0]).length)) {
       const target=s.graph(id), tags=new Set();
       for(const b of g.boundary) {
         check(!!target.parent && SIDES.includes(b.side),"invalid boundary side");
