@@ -30,6 +30,11 @@ test("Capsule Studio preview serves only static editor assets on loopback",async
     const app=await fetch(base+"/app.mjs");
     assert.equal(app.status,200);
     assert.match(await app.text(),/new CapsuleStudio/);
+    for(const route of ["/capsule-ir-proposal.mjs","/editor-projection.mjs"]){
+      const response=await fetch(base+route);
+      assert.equal(response.status,200);
+      assert.match(response.headers.get("content-type"),/javascript/);
+    }
     assert.equal((await fetch(base+"/server/private")).status,404);
     assert.equal((await fetch(base+"/",{method:"POST"})).status,405);
   } finally {
