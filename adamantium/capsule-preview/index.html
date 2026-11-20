@@ -43,6 +43,7 @@ h2{font-size:15px;margin:0 0 8px} h3{font-size:13px;margin:0 0 8px}
 #wires {position:absolute;inset:0;overflow:visible;pointer-events:none}
 .node {position:absolute;width:190px;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 14px #0002;user-select:none}
 .node.capsule {border-color:var(--accent);min-height:120px}
+.node.selected {outline:2px solid var(--warning);outline-offset:3px}
 .node-head {background:var(--raised);padding:10px;border-radius:11px 11px 0 0;cursor:grab}
 .node-head:active{cursor:grabbing}
 .node-head strong {display:block;font-size:13px;overflow-wrap:anywhere}
@@ -84,6 +85,8 @@ fieldset{border:1px solid var(--border);border-radius:8px}
   <div class="actions">
     <button id="newDefinition">+ Микропрограмма</button>
     <button id="newCapsule">+ Вложенный граф</button>
+    <button id="extractSelection" title="Shift+клик по нескольким нодам">Извлечь выбранные</button>
+    <button id="saveTemplate">Сохранить шаблон</button>
     <button id="export">Экспорт JSON</button>
     <button id="import">Импорт JSON</button>
     <button id="reset">Сброс демо</button>
@@ -99,7 +102,7 @@ fieldset{border:1px solid var(--border);border-radius:8px}
     <button data-filter="favorites">Избранное</button>
   </div>
   <div id="palette"></div>
-  <p><small>Перетащи компонент на поле или нажми «+». Новый экземпляр ссылается на ту же версию определения.</small></p>
+  <p><small>Перетащи компонент или шаблон на поле. Shift+клик по заголовкам выделяет ноды для извлечения. Код определений не копируется.</small></p>
 </aside>
 <div class="stage">
   <div class="toolbar">
