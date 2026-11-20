@@ -185,9 +185,9 @@ export class ConstructEngine {
         const graphId=id(command.graphId,"graph ID"),instanceId=id(value(command.instanceId),"instance ID");
         this.studio.instance(graphId,instanceId);
         requireIt(Object.keys(this.views).length<2000,"view budget exceeded");
-        const id=this.studio.next("view");
-        this.views[id]={graphId,instanceId};
-        return {id,kind:"view"};
+        const viewId=this.studio.next("view");
+        this.views[viewId]={graphId,instanceId};
+        return {id:viewId,kind:"view"};
       }
       case "unalias":{
         const viewId=id(value(command.viewId),"view ID");
