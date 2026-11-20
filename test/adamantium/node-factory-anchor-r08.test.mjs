@@ -75,8 +75,15 @@ test('R08 pins R06 witness, Ed25519-signs journal history, replays idempotently'
   assert.equal(state.grantsMASPermission,false);
   assert.equal(state.productionPublished,false);
   const open=await FactoryEvidenceAnchor.open(x.anchorRoot,{
-   expectedAnchorFingerprint:state.anchorKeyFingerprint});
+   expectedAnchorFingerprint:state.anchorKeyFingerprint,
+   trustedSequence:first.sequence,trustedReceiptHash:first.receiptHash
+  });
   assert.equal((await open.inspect()).latest.receiptHash,second.receiptHash);
+  await assert.rejects(FactoryEvidenceAnchor.open(x.anchorRoot,{
+   expectedAnchorFingerprint:state.anchorKeyFingerprint,
+   trustedSequence:first.sequence,
+   trustedReceiptHash:'sha256:'+'f'.repeat(64)
+  }),/anchor_external_head_mismatch/);
   assert.equal(verified.sequence,2);
  }finally{await rm(x.parent,{recursive:true,force:true});}
 });
