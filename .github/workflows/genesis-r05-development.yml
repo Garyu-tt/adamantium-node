@@ -1,0 +1,74 @@
+name: GENESIS R05 Development Planner
+on:
+  pull_request:
+    paths:
+      - 'experiments/genesis/r05-development/**'
+      - '.github/workflows/genesis-r05-development.yml'
+  workflow_dispatch:
+jobs:
+  cpu-contract:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify source hashes and obtain immutable R03 baseline
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, json, pathlib, urllib.request, zipfile, io
+          root=pathlib.Path('experiments/genesis/r05-development')
+          m=json.loads((root/'manifest.json').read_text(encoding='utf-8'))
+          assert m['schema']=='mechanicus.genesis-development-handoff/1'
+          for f,h in m['source_files_sha256'].items():
+              assert hashlib.sha256((root/f).read_bytes()).hexdigest()==h, f
+          vendor=m['pinned_vendor']
+          url=f"https://raw.githubusercontent.com/Garyu-tt/adamantium-node/{vendor['source_commit']}/{vendor['path']}"
+          with urllib.request.urlopen(url,timeout=30) as r:
+              encoded=r.read()
+          b=base64.b64decode(encoded,validate=False)
+          assert len(b)==vendor['zip_bytes']
+          assert hashlib.sha256(b).hexdigest()==vendor['zip_sha256']
+          with zipfile.ZipFile(io.BytesIO(b)) as z:
+              names=[x.filename for x in z.infolist() if not x.is_dir()]
+              assert len(names)==len(set(names))
+              assert all(not n.startswith('/') and '..' not in n.split('/') and '\\' not in n for n in names)
+              for item in z.infolist():
+                  if item.filename.startswith('vendor/r03/') and not item.is_dir():
+                      p=root/item.filename
+                      p.parent.mkdir(parents=True,exist_ok=True)
+                      data=z.read(item)
+                      p.write_bytes(data)
+          for f,h in vendor['validated_file_sha256'].items():
+              assert hashlib.sha256((root/'vendor/r03'/f).read_bytes()).hexdigest()==h,f
+          print('R05 source and R03 pinned vendor verified. No executable ran during extraction.')
+          PY
+      - name: Run deterministic R05 and R03 regression tests
+        working-directory: experiments/genesis/r05-development
+        run: |
+          node --check lib/development-planner.cjs
+          node --check cli.cjs
+          npm test
+          (cd vendor/r03 && npm test)
+          node cli.cjs demo > r05-demo-evidence.json
+      - name: Verify experimental neural development evidence
+        working-directory: experiments/genesis/r05-development
+        run: |
+          python3 - <<'PY'
+          import json
+          p=json.load(open('r05-demo-evidence.json'))
+          m=json.load(open('manifest.json'))
+          expected=m['baseline_tests']['expected_demo']
+          assert p['result']['total_spikes']==expected['total_spikes']
+          assert p['result']['regions']['V1']['materialized_neurons']==expected['active_v1']
+          assert p['result']['regions']['V1']['virtual_region_neurons']==expected['virtual_v1']
+          assert p['result']['simulation_steps']==expected['steps']
+          assert p['preview']['structural']=={'retained_synapses':expected['synapses_retained'],
+                                               'removed_synapses':expected['synapses_removed'],
+                                               'added_synapses':expected['synapses_added']}
+          assert p['preview']['source_genotype_unchanged'] and p['result']['genomes_unchanged']
+          assert not p['status']['live_topology_hot_swap']
+          print('R05 shadow growth demo reproducible; no unverified live swap claim')
+          PY
