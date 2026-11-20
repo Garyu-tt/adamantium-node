@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 export const REACTIVE_FORMAT="adamantium.native-reactions/1";
-const ID=/^[a-zA-Z][a-zA-Z0-9_.:-]{0,127}$/;
+const ID=/^[a-zA-Z0-9][a-zA-Z0-9_.:-]{0,127}$/;
 const OWN_ORIGIN="adamantium-construct-native-r03";
 export const REACTIVE_ORIGIN=OWN_ORIGIN;
 export const MAX_REACTIVE_RULES=24;

@@ -63,6 +63,11 @@ test("cleanup is possible only for tracked, explicitly owned generated nodes",()
  assert.ok(x.getOwned("flow_1","user_input","rx"));
  assert.equal(x.accept(event("user_input",{event:"nodes:remove"})).enqueued,0,"do not loop failed cleanup");
 });
+test("native Node-RED hexadecimal IDs may begin with numbers",()=>{
+ const e=validateReactionEvent(event("20abc12de",{flowId:"20a17e4b296fa1f5"}));
+ assert.equal(e.flowId,"20a17e4b296fa1f5");
+ assert.equal(e.nodeId,"20abc12de");
+});
 test("non-allowlisted events, malformed origins and unsupported trigger types fail closed",()=>{
  assert.throws(()=>validateReactionEvent(event("id",{event:"runtime:deploy"})),/unsupported event/);
  assert.throws(()=>validateReactionEvent(event("id",{nodeType:"exec"})),/untrusted node type/);
