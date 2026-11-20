@@ -1,0 +1,31 @@
+name: Adamantium scoped read-only observer R01
+
+on:
+  push:
+    branches:
+      - feature/ai-readonly-observer-r01-20261120
+  pull_request:
+    paths:
+      - 'adamantium/ai-graph-inspect.mjs'
+      - 'adamantium/agent-readonly-observer.mjs'
+      - 'test/adamantium/ai-graph-inspect.test.mjs'
+      - 'test/adamantium/agent-readonly-observer.test.mjs'
+      - '.github/workflows/adamantium-readonly-observer-r01.yml'
+
+jobs:
+  observer:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Syntax check
+        run: node --check adamantium/agent-readonly-observer.mjs
+      - name: Redaction, scope and atomic observation tests
+        run: node --test test/adamantium/ai-graph-inspect.test.mjs test/adamantium/agent-readonly-observer.test.mjs

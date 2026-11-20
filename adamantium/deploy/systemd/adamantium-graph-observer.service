@@ -1,0 +1,31 @@
+[Unit]
+Description=Adamantium-node scoped read-only graph observer
+After=adamantium-node.service
+Requires=adamantium-node.service
+
+[Service]
+Type=oneshot
+User=adamantium-observer
+Group=adamantium-observer
+WorkingDirectory=/var/lib/adamantium-observer
+Environment=HOME=/var/lib/adamantium-observer
+Environment=PATH=/opt/adamantium-runtime/node-v24.22.3-linux-x64/bin:/usr/bin:/bin
+LoadCredential=observer-login:/etc/adamantium-node/ai-observer-bootstrap.txt
+ExecStart=/opt/adamantium-runtime/node-v24.22.3-linux-x64/bin/node /opt/adamantium-node/observer-r01/adamantium/agent-readonly-observer.mjs --url http://127.0.0.1:1885/ --out /var/lib/adamantium-observer/snapshot.json
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/adamantium-observer
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+AmbientCapabilities=
+MemoryMax=256M
+CPUQuota=50%
+RuntimeMaxSec=30

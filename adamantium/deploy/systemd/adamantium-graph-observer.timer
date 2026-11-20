@@ -1,0 +1,13 @@
+[Unit]
+Description=Refresh scoped Adamantium graph observation every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+RandomizedDelaySec=15s
+Unit=adamantium-graph-observer.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target
