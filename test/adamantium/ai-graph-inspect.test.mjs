@@ -23,7 +23,7 @@ test("validates strict local-only origin",()=>{
 test("returns redacted typed read-only projection",()=>{
   const result=projection(fixture),text=JSON.stringify(result);
   assert.equal(result.revision,"rev-1");
-  assert.deepEqual(result.summary,{tabs:1,nodes:2,outboundEdges:1,types:{tab:1,inject:1,debug:1}});
+  assert.deepEqual({...result.summary,types:{...result.summary.types}},{tabs:1,nodes:2,outboundEdges:1,types:{tab:1,inject:1,debug:1}});
   assert.equal(result.nodes[0].name,"input");
   assert.ok(!text.includes("SUPERSECRET"));
   assert.ok(!text.includes("DO-NOT-EXPOSE"));
