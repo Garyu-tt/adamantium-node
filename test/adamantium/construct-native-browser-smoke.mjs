@@ -68,21 +68,75 @@ try {
   assert.ok(cards>=3,"built-in native Q presets must render");
   const status=await page.locator("#ada-native-status").innerText();
   assert.match(status,/элементов/);
+  await page.locator("#ada-native-stamp").selectOption("4");
   await page.locator("#ada-native-cards .adamantium-construct-card").first().locator("button").click();
   await page.waitForFunction(()=>document.getElementById("adamantium-construct-native-overlay")?.hidden===true,null,{timeout:15000});
   await page.mouse.move(800,450);
   await page.mouse.click(800,450);
   await page.waitForFunction(()=>{
     const id=RED.workspaces.active();
-    return !!id && RED.nodes.filterNodes({z:id}).length>=2;
+    return !!id && RED.nodes.filterNodes({z:id}).length>=8;
   },{timeout:15000});
   const nodes=await page.evaluate(()=>RED.nodes.filterNodes({z:RED.workspaces.active()})
     .map(n=>({id:n.id,type:n.type})));
-  assert.ok(nodes.some(n=>n.type==="inject"));
-  assert.ok(nodes.some(n=>n.type==="debug"));
+  assert.equal(nodes.length,8,"four stamped source+sink pairs");
+  assert.equal(nodes.filter(n=>n.type==="inject").length,4);
+  assert.equal(nodes.filter(n=>n.type==="debug").length,4);
+  const links=await page.evaluate(()=>{
+    const result=[];RED.nodes.eachLink(link=>result.push({from:link.source.type,to:link.target.type}));
+    return result;
+  });
+  assert.equal(links.length,4,"four independent connections");
+  assert.ok(links.every(e=>e.from==="inject"&&e.to==="debug"));
+  // Snapshot the first internally connected pair through the real Q menu.
+  await page.evaluate(()=>{
+    let chosen=[];RED.nodes.eachLink(link=>{if(!chosen.length)chosen=[link.source,link.target];});
+    RED.view.select({nodes:chosen});
+    document.body.focus();
+  });
+  await page.keyboard.press("q");
+  await page.waitForSelector("#adamantium-construct-native-overlay:not([hidden])");
+  await page.locator("#ada-native-title-input").fill("Saved diagnostic pair");
+  page.once("dialog",dialog=>dialog.accept());
+  await page.locator("#ada-native-save").click();
+  await page.waitForFunction(()=>{
+    const data=JSON.parse(localStorage.getItem("adamantium.native-q-library.r02")||"{}");
+    return data.snapshots?.length===1;
+  });
+  await page.locator("#ada-native-cards .adamantium-construct-card").first().locator("button").click();
+  await page.mouse.move(650,550);
+  await page.mouse.click(650,550);
+  await page.waitForFunction(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length>=10);
+  const afterCopy=await page.evaluate(()=>RED.nodes.filterNodes({z:RED.workspaces.active()})
+    .map(n=>n.id));
+  assert.equal(afterCopy.length,10);
+  assert.equal(new Set(afterCopy).size,10,"snapshot copy gets new native IDs");
+  // Opt-in automatic construction on an entirely new, empty native flow.
+  await page.evaluate(()=>document.body.focus());
+  await page.keyboard.press("q");
+  await page.waitForSelector("#adamantium-construct-native-overlay:not([hidden])");
+  await page.locator("#ada-native-auto-tab").check();
+  await page.evaluate(()=>RED.workspaces.add(null));
+  await page.waitForFunction(()=>{
+    const z=RED.workspaces.active();
+    return !!z&&RED.nodes.filterNodes({z}).length===2;
+  });
+  const autoNodes=await page.evaluate(()=>RED.nodes.filterNodes({z:RED.workspaces.active()})
+    .map(n=>n.type).sort());
+  assert.deepEqual(autoNodes,["debug","inject"]);
+  // A locked flow must reject editor-side changes before native import.
+  await page.evaluate(()=>{RED.nodes.workspace(RED.workspaces.active()).locked=true;document.body.focus();});
+  await page.keyboard.press("q");
+  await page.waitForSelector("#adamantium-construct-native-overlay:not([hidden])");
+  await page.locator("[data-ada-tab='builtin']").click();
+  await page.locator("#ada-native-cards .adamantium-construct-card").first().locator("button").click();
+  await page.waitForFunction(()=>document.querySelector("#ada-native-status")?.dataset.error==="true");
+  assert.match(await page.locator("#ada-native-status").innerText(),/заблокирована/);
+  assert.equal(await page.evaluate(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length),2);
+  await page.evaluate(()=>{RED.nodes.workspace(RED.workspaces.active()).locked=false;});
   assert.equal(new Set(nodes.map(n=>n.id)).size,nodes.length);
   assert.equal(errors.length,0,"browser JS errors: "+errors.join("; "));
-  console.log("NATIVE_Q_SMOKE_OK nodes="+nodes.length+" builtins="+cards+" port="+port);
+  console.log("NATIVE_Q_SMOKE_OK stamped=8 saved_clone=2 auto_new_tab=2 locked_guard=true builtins="+cards+" port="+port);
 } finally {
   if(browser)await browser.close();
   if(server){
