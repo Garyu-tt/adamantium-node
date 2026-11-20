@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><title>R07 native SVG smoke</title>
+<style>
+ body {background:#1b2530;color:#edf4fa;font-family:system-ui}
+ #red-ui-workspace-chart {width:1100px;height:700px;overflow:auto}
+ svg {display:block;width:8000px;height:8000px}
+</style></head><body data-smoke="starting">
+<div id="red-ui-workspace-chart"><svg width="8000" height="8000">
+<g><g class="red-ui-workspace-chart-event-layer"><g class="red-ui-original-flow-node" data-sentinel="untouched"></g></g></g>
+</svg></div>
+<script type="module">
+import {CapsuleStudio} from "/adamantium/capsule-studio.mjs";
+import {mountNativeCapsuleWorkspace,STORAGE} from "/adamantium/capsule-native-canvas.mjs";
+try {
+ const s=new CapsuleStudio(),root=s.createGraph("Smoke");
+ const type=s.createDefinition({name:"Worker",language:"rust",source:"not executed",
+  ports:[
+   {tag:"input",direction:"input",semantics:"data",dataType:"core.json@1"},
+   {tag:"output",direction:"output",semantics:"data",dataType:"core.json@1"}
+  ]});
+ const first=s.place(root,type.id);
+ const c=s.createCapsule(root,"Four-side capsule");
+ const inside=s.place(c.graphId,type.id);
+ for(const [side,tag,externalTag] of [
+  ["north","input","north_input"],["west","input","west_input"],
+  ["east","output","east_output"],["south","output","south_output"]
+ ])s.expose(c.graphId,{side,instanceId:inside,tag,externalTag});
+ localStorage.setItem(STORAGE,JSON.stringify({model:s.snapshot(),positions:{
+  [root]:{[first]:{x:190,y:280},[c.instanceId]:{x:600,y:280}}
+ }}));
+ const mounted=mountNativeCapsuleWorkspace();
+ function ensure(condition,msg){if(!condition)throw Error(msg);}
+ const layer=document.querySelector(".adamantium-native-capsule-layer");
+ ensure(layer&&layer.closest(".red-ui-workspace-chart-event-layer"),"not in SVG scene");
+ ensure(document.querySelector('[data-sentinel="untouched"]'),"native Node-RED node damaged");
+ ensure(mounted.inspect().nodes===2,"unexpected node count");
+ const capsule=document.querySelector('[data-instance-id="'+c.instanceId+'"]');
+ const box=capsule.getBoundingClientRect();
+ for(const [side,tag] of [
+  ["north","north_input"],["east","east_output"],
+  ["south","south_output"],["west","west_input"]
+ ]) {
+  const p=capsule.querySelector('[data-port-tag="'+tag+'"]');
+  ensure(p&&p.getAttribute("data-side")===side,"missing "+side+" typed port");
+  const a=p.getBoundingClientRect();
+  if(side==="north")ensure(a.top<=box.top+17,"north port misaligned");
+  if(side==="south")ensure(a.bottom>=box.bottom-17,"south port misaligned");
+  if(side==="west")ensure(a.left<=box.left+17,"west port misaligned");
+  if(side==="east")ensure(a.right>=box.right-17,"east port misaligned");
+ }
+ function hit(instance,tag){
+  const el=document.querySelector('[data-instance-id="'+instance+'"] [data-port-tag="'+tag+'"] circle[pointer-events="all"]');
+  ensure(el,"missing port hitbox "+tag);
+  el.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true}));
+ }
+ hit(first,"output");
+ hit(c.instanceId,"west_input");
+ ensure(mounted.inspect().edges===1,"SVG port clicks did not create typed wire");
+ ensure(document.querySelectorAll(".adamantium-native-wire").length===1,"wire missing in SVG");
+ const persisted=JSON.parse(localStorage.getItem(STORAGE));
+ ensure(persisted.model.graphs[root].edges.length===1,"shared storage not updated");
+ const card=document.querySelector('[data-instance-id="'+c.instanceId+'"] [data-drag-handle]');
+ ensure(card,"capsule hitbox absent");
+ card.dispatchEvent(new MouseEvent("dblclick",{bubbles:true,cancelable:true}));
+ ensure(mounted.inspect().activeGraph===c.graphId,"double-click did not enter");
+ ensure(document.querySelectorAll(".adamantium-native-portal").length===4,"parent portals missing");
+ const west=document.querySelector('.adamantium-native-portal[data-side="west"] rect[pointer-events="all"]');
+ west.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true}));
+ ensure(mounted.inspect().activeGraph===root,"portal did not return");
+ mounted.close();
+ ensure(!document.querySelector(".adamantium-native-capsule-layer"),"layer not removed on close");
+ ensure(document.querySelector('[data-sentinel="untouched"]'),"native flow changed on close");
+ document.body.dataset.smoke="pass";
+} catch(error){
+ document.body.dataset.smoke="failed";
+ document.body.dataset.error=String(error.message).slice(0,250);
+ console.error(error);
+}
+</script></body></html>

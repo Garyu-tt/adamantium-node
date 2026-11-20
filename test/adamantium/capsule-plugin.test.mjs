@@ -14,7 +14,7 @@ test("Node-RED editor package declares a real editor plugin (no executable runti
  assert.equal(pkg.scripts?.postinstall,undefined);
 });
 test("packaged resources match single source-of-truth files byte-for-byte",async()=>{
- for(const path of ["capsule-studio.mjs","capsule-extract.mjs","capsule-ir-proposal.mjs","editor-projection.mjs"]){
+ for(const path of ["capsule-studio.mjs","capsule-extract.mjs","capsule-ir-proposal.mjs","editor-projection.mjs","capsule-native-layout.mjs","capsule-native-canvas.mjs"]){
   assert.equal(await load("resources/"+path),await load(path,root));
  }
  for(const path of ["index.html","app.mjs"]){
@@ -67,4 +67,9 @@ test("Node-RED sidebar registration, lazy iframe and keyboard action work under 
  fullScreen.events.click();
  assert.equal(opened[1],"_blank");
  assert.equal(opened[2],"noopener,noreferrer");
+ assert.equal(typeof actions["adamantium:toggle-native-canvas"],"function");
+ const nativeButton=widgets.find(w=>w.attrs.text==="На основной SVG");
+ assert.ok(nativeButton,"editor provides a native SVG action button");
+ assert.equal(typeof nativeButton.events.click,"function");
+ assert.match(html,/resources\/node-red-contrib-adamantium-capsules\/capsule-native-canvas\.mjs/);
 });
