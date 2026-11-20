@@ -103,6 +103,7 @@ try {
     const data=JSON.parse(localStorage.getItem("adamantium.native-q-library.r02")||"{}");
     return data.snapshots?.length===1;
   });
+  await page.locator("#ada-native-stamp").selectOption("1");
   await page.locator("#ada-native-cards .adamantium-construct-card").first().locator("button").click();
   await page.mouse.move(650,550);
   await page.mouse.click(650,550);
