@@ -1,0 +1,35 @@
+name: Adamantium Capsule Studio R02 (isolated)
+on:
+  push:
+    branches: ["feature/capsule-studio-native-sidebar-r02"]
+  pull_request:
+    paths:
+      - "adamantium/capsule-**"
+      - "adamantium/capsule-preview/**"
+      - "adamantium/plugins/node-red-contrib-adamantium-capsules/**"
+      - "test/adamantium/capsule-**"
+      - ".github/workflows/capsule-studio-r02.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  model-plugin-and-preview:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ["22", "24"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Syntax
+        run: |
+          node --check adamantium/capsule-studio.mjs
+          node --check adamantium/capsule-extract.mjs
+          node --check adamantium/capsule-preview/app.mjs
+          node --check adamantium/capsule-preview-server.mjs
+      - name: Model, refactor, plugin contract and HTTP smoke tests
+        run: node --test test/adamantium/capsule-studio.test.mjs test/adamantium/capsule-extract.test.mjs test/adamantium/capsule-plugin.test.mjs test/adamantium/capsule-preview.test.mjs

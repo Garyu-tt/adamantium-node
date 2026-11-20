@@ -1,0 +1,64 @@
+<!-- Editor-side plugin only. Never registers executable Node-RED flow nodes. -->
+<script type="text/javascript">
+(function () {
+    "use strict";
+    const TAB = "adamantium-capsules-r02";
+    const ACTION = "adamantium:show-capsule-studio";
+    const RESOURCE = "resources/node-red-contrib-adamantium-capsules/preview/index.html";
+    RED.plugins.registerPlugin(TAB, {
+        type: "adamantium-editor-sidebar",
+        onadd: function () {
+            if (RED.sidebar.containsTab(TAB)) {
+                return;
+            }
+            const content = $("<div>").css({
+                "display": "flex", "flex-direction": "column",
+                "height": "100%", "min-height": "180px"
+            });
+            const toolbar = $("<div>").css({
+                "display": "flex", "gap": "6px", "flex-wrap": "wrap", "padding": "8px"
+            }).appendTo(content);
+            const label = $("<div>").text("Локальные графы · исходники не исполняются")
+                .css({"font-size":"11px","opacity":"0.75","padding":"0 8px 8px"}).appendTo(content);
+            // This is a packaged, fixed URL. Never interpolate node parameters
+            // or user-defined sources into iframe src.
+            const url = new URL(RESOURCE, document.baseURI).href;
+            const frame = $("<iframe>").attr({
+                "title": "Adamantium Capsule Studio",
+                "sandbox": "allow-scripts allow-same-origin allow-downloads",
+                "referrerpolicy": "no-referrer",
+                "loading": "lazy"
+            }).css({
+                "width": "100%", "flex": "1 1 auto", "min-height": "340px",
+                "border": "0", "background": "var(--red-ui-primary-background-color, #1a2431)"
+            }).appendTo(content);
+            let initialized = false;
+            function start() {
+                if (!initialized) {
+                    frame.attr("src", url);
+                    initialized = true;
+                }
+            }
+            $("<button>",{"type":"button","text":"Открыть графы"})
+                .on("click",start).appendTo(toolbar);
+            $("<button>",{"type":"button","text":"На весь экран ↗"})
+                .on("click",function() {
+                    start();
+                    window.open(url,"_blank","noopener,noreferrer");
+                }).appendTo(toolbar);
+            RED.actions.add(ACTION,function(){
+                RED.sidebar.show(TAB);
+            });
+            RED.sidebar.addTab({
+                id:TAB,
+                name:"Adamantium Capsule Studio",
+                label:"Capsules",
+                iconClass:"fa fa-object-group",
+                content:content,
+                action:ACTION,
+                onchange:start
+            });
+        }
+    });
+})();
+</script>
