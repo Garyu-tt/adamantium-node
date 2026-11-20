@@ -1,0 +1,30 @@
+name: Adamantium Hot Worker Slot R01
+
+on:
+  push:
+    branches:
+      - feat/trusted-hot-worker-r01-20261120
+  pull_request:
+    paths:
+      - 'adamantium/hot-worker-slot.mjs'
+      - 'adamantium/hot-worker-runner.mjs'
+      - 'test/adamantium/hot-worker-slot.test.mjs'
+      - '.github/workflows/adamantium-hot-worker-r01.yml'
+
+jobs:
+  signed-hot-worker:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Worker syntax
+        run: node --check adamantium/hot-worker-slot.mjs
+      - name: Signed hot-swap lifecycle tests (no external dependencies)
+        run: node --test test/adamantium/hot-worker-slot.test.mjs
