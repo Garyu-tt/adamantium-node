@@ -30,7 +30,6 @@ function verifySelection(graph,ids){
   const set=new Set(ids);
   demand(set.size===ids.length,"duplicate selected instance");
   for(const id of set) demand(graph.instances.some(node=>node.id===id),"selected node missing: "+id);
-  demand(set.size<graph.instances.length,"cannot extract all nodes without external anchor");
   return set;
 }
 /**
