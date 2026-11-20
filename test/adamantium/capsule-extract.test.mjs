@@ -105,3 +105,14 @@ test("template import rejects tampered fingerprints; missing definitions block p
  assert.throws(()=>good.place(studio,root,id),/definition/);
  assert.deepEqual(studio.snapshot(),before);
 });
+
+test("extracting an entire graph is a valid zero-boundary capsule",()=>{
+ const {studio,root,def}=make();
+ const a=studio.place(root,def.id),b=studio.place(root,def.id);
+ studio.connect(root,{fromId:a,fromTag:"result",toId:b,toTag:"data"});
+ const extracted=extractSelection(studio,root,[a,b],"Entire graph");
+ assert.equal(extracted.interfacePorts,0);
+ assert.equal(studio.graph(root).instances.length,1);
+ assert.equal(studio.graph(extracted.graphId).instances.length,2);
+ assert.equal(studio.graph(extracted.graphId).edges.length,1);
+});
