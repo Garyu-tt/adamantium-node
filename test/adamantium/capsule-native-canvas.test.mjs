@@ -187,3 +187,20 @@ test("extract selection action moves selected native cards atomically into one r
   assert.equal(controller.inspect().runtimeActivated,false);
  }finally{controller.close();}
 });
+
+test("native draft layer intercepts dangerous flow shortcuts and unregisters on close",()=>{
+ const b=fakeBrowser(),controller=mountNativeCapsuleWorkspace(b);
+ let prevented=false,stopped=false;
+ b.windowRef.emit("keydown",{
+   key:"Delete",ctrlKey:false,metaKey:false,
+   target:{tagName:"BODY"},
+   stopImmediatePropagation(){stopped=true;},
+   stopPropagation(){},
+   preventDefault(){prevented=true;}
+ });
+ assert.equal(prevented,true,"native Delete is blocked while draft is active");
+ assert.equal(stopped,true,"native editor hotkey listeners do not receive Delete");
+ assert.equal(b.listeners.keydown.length,1);
+ controller.close();
+ assert.equal(b.listeners.keydown.length,0);
+});
