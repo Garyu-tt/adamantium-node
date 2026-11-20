@@ -183,3 +183,34 @@ test("read-only handoff has no credentials, source code or ambient authorization
  assert.equal(JSON.stringify(data).includes("operatorToken"),false);
  assert.equal(JSON.stringify(data).includes("blueprint"),false);
 });
+
+test("unsupported sandbox execution fails closed without leaking in-flight tickets",async()=>{
+ const graph=start();
+ graph.nodes[1].type="change";
+ graph.nodes[1].name="Not executed";
+ delete graph.nodes[1].active;
+ const k=await RevisionedGraphKernel.create({flowId:"f1",blueprint:graph});
+ const ticket=k.beginEvent({entryId:"builtin_src",value:{key:"value"}});
+ assert.throws(()=>k.advance(ticket.ticket,10),/no sandbox execution semantics/);
+ assert.equal(k.status().inFlight,0,"failed event must release pinned ticket");
+ assert.ok(k.receipts.some(r=>r.operation==="event-failed"&&r.ticket===ticket.ticket));
+ assert.throws(()=>k.advance(ticket.ticket),/unknown event ticket/);
+});
+test("cyclic native graphs are bounded by the sandbox traversal budget",async()=>{
+ const graph=start();
+ graph.nodes[1].wires=[["builtin_src"]];
+ const k=await RevisionedGraphKernel.create({flowId:"f1",blueprint:graph});
+ const ticket=k.beginEvent({entryId:"builtin_src",value:{payload:"loop"}});
+ // Debug is a terminal sink in the R05 sandbox. To exercise a real cycle,
+ // two inject nodes may forward to each other until the 128-step budget.
+ const self=start();
+ self.nodes[1].type="inject";
+ self.nodes[1].wires=[["builtin_src"]];
+ const cycle=await RevisionedGraphKernel.create({flowId:"f2",blueprint:self});
+ const entry=cycle.beginEvent({entryId:"builtin_src",value:"cycle"});
+ for(let i=0;i<4;i++)assert.equal(cycle.advance(entry.ticket,32).done,false);
+ assert.throws(()=>cycle.advance(entry.ticket,1),/traversal budget/);
+ assert.equal(cycle.status().inFlight,0);
+ // An independent graph with a debug sink never executes arbitrary callbacks.
+ assert.equal(k.advance(ticket.ticket,32).done,true);
+});

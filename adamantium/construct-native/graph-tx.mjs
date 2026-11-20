@@ -162,8 +162,9 @@ export class RevisionedGraphKernel{
     requireThat(Number.isSafeInteger(maxSteps)&&maxSteps>=1&&maxSteps<=32,"invalid step count");
     const e=this.events.get(ticket);
     let count=0;
-    while(e.queue.length&&count<maxSteps){
-      requireThat(e.steps<128,"event traversal budget exceeded");
+    try{
+      while(e.queue.length&&count<maxSteps){
+        requireThat(e.steps<128,"event traversal budget exceeded");
       const next=e.queue.shift(),node=e.nodes.get(next.nodeId);
       requireThat(!!node,"graph link target disappeared");
       requireThat(["inject","debug","comment"].includes(node.type),
@@ -174,7 +175,15 @@ export class RevisionedGraphKernel{
         requireThat(e.queue.length+outgoing.length<=128,"event fan-out budget exceeded");
         for(const target of outgoing)e.queue.push({nodeId:target,value:clone(next.value)});
       }
-      e.steps++;count++;
+        e.steps++;count++;
+      }
+    }catch(failure){
+      // A failed or unsupported sandbox node must never leave a zombie ticket
+      // that blocks a future revision, or implicitly attempt another step.
+      this.events.delete(ticket);
+      this.record({operation:"event-failed",ticket,revision:e.revision,
+        steps:e.steps,reason:String(failure?.message||"sandbox execution failed").slice(0,180)});
+      throw failure;
     }
     const result={ticket,revision:e.revision,digest:e.digest,done:e.queue.length===0,
       steps:e.steps,pending:e.queue.length,debug:clone(e.debug)};
