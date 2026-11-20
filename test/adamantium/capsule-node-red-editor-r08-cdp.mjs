@@ -74,6 +74,15 @@ try{
     await sleep(400);
   }
   if(pre.action!=="function"||!pre.svg)throw Error("Editor not initialized: "+JSON.stringify(pre));
+  // Reruns may inherit a previous failed test's inert overlay. Close that
+  // isolated editor-only layer before establishing a fresh initial condition.
+  const priorLayer=await evaluate('!!document.querySelector(".adamantium-native-capsule-layer")');
+  if(priorLayer){
+    await evaluate('RED.actions.invoke("adamantium:toggle-native-canvas")');
+    await sleep(200);
+    if(await evaluate('!!document.querySelector(".adamantium-native-capsule-layer")'))
+      throw Error("Previous isolated editor layer could not be removed");
+  }
   const toggled=await evaluate('(function(){try{RED.actions.invoke("adamantium:toggle-native-canvas");return {called:true};}catch(e){return {called:false,error:String(e.message)};}})()');
   if(!toggled.called)throw Error("Action invoke failed: "+JSON.stringify(toggled));
   let post=null;
