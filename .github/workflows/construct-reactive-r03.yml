@@ -1,0 +1,29 @@
+name: Adamantium Construct Reactive R03
+on:
+  push:
+    branches:
+      - feature/construct-reactive-r03
+  pull_request:
+    paths:
+      - "adamantium/construct-native/reactor*.mjs"
+      - "adamantium/plugins/node-red-contrib-adamantium-construct/**"
+      - "test/adamantium/construct-reactive.test.mjs"
+      - ".github/workflows/construct-reactive-r03.yml"
+jobs:
+  opt-in-reactor:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [22, 24]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Source syntax and bounded event policies
+        run: |
+          node --check adamantium/construct-native/reactor.mjs
+          node --check adamantium/construct-native/reactor-editor.mjs
+          node --test test/adamantium/construct-reactive.test.mjs test/adamantium/construct-native.test.mjs

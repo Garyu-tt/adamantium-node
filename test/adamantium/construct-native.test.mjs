@@ -92,6 +92,11 @@ test("plugin is a real Node-RED editor plugin, no runtime executable nodes",asyn
  assert.equal(pkg.scripts?.postinstall,undefined);
  assert.equal(await readFile(new URL("resources/core.mjs",root),"utf8"),
    await readFile(new URL("../../adamantium/construct-native/core.mjs",import.meta.url),"utf8"));
+ for(const filename of ["reactor.mjs","reactor-editor.mjs"]){
+   assert.equal(await readFile(new URL("resources/"+filename,root),"utf8"),
+     await readFile(new URL("../../adamantium/construct-native/"+filename,import.meta.url),"utf8"));
+ }
+
  const html=await readFile(new URL("native-q-menu.html",root),"utf8");
  const reg=html.match(/<script type="text\/javascript">([\s\S]*?)<\/script>/);
  assert.ok(reg);

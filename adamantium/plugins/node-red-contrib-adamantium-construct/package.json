@@ -1,8 +1,8 @@
 {
   "name": "node-red-contrib-adamantium-construct",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
-  "description": "Editor-only native Node-RED Q spawn menu for Adamantium Construct (no flow runtime)",
+  "description": "Editor-only native Q menu with bounded reactive graph assembly, snapshots and safe reuse",
   "license": "Apache-2.0",
   "keywords": [
     "node-red",
@@ -22,6 +22,6 @@
     "resources"
   ],
   "scripts": {
-    "check": "node --check resources/core.mjs"
+    "check": "node --check resources/core.mjs && node --check resources/reactor.mjs && node --check resources/reactor-editor.mjs"
   }
 }
