@@ -197,3 +197,14 @@ test("two concurrent submissions on one signed offer serialize and cannot double
    assert.equal(h.checks.native,1);
  }finally{await h.teardown();}
 });
+
+test("a closed inbox cannot mutate state after releasing its single-writer lock",async()=>{
+ const h=await harness();
+ try{
+   await h.inbox.close();
+   await assert.rejects(h.inbox.preflight({
+     nodeId:NODE,graphId:h.root,contract:"mechanicus.graph.propose/1"
+   },{}),/closed/);
+   assert.equal(h.inbox.summary().reviewQueue,0);
+ }finally{await h.teardown();}
+});
