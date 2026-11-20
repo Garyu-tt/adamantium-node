@@ -85,6 +85,13 @@ try{
   if(!post.mounted||post.cards<2||post.mode!=="disabled"||!post.layerInside){
     throw Error("Native SVG failed to mount: "+JSON.stringify({pre,post}));
   }
+  // In a *disposable* Node-RED profile only, refuse to opt in to its first-
+  // launch update telemetry. Other dialogs are not dismissed or clicked.
+  const intro=await evaluate('(function(){const dialog=[...document.querySelectorAll(".red-ui-popover.red-ui-dialog")].find(d=>getComputedStyle(d).display!=="none"&&d.textContent?.includes("Enable Update Notifications"));if(!dialog)return "none";const no=[...dialog.querySelectorAll("button")].find(b=>b.textContent.trim()==="No, do not enable notifications");if(!no)throw Error("Cannot safely decline first-launch notifications");no.click();return "declined-test-profile-only";})()');
+  if(intro!=="none")await sleep(250);
+  const overlayBlock=await evaluate('(function(){const el=document.querySelector(".adamantium-native-capsule-card [data-drag-handle]");const rect=el?.getBoundingClientRect();return {hit:rect?document.elementFromPoint(rect.left+Math.min(40,rect.width*.3),rect.top+Math.min(20,rect.height*.4))?.getAttribute("data-drag-handle"):null,shade:[...document.querySelectorAll(".red-ui-shade")].some(e=>getComputedStyle(e).display!=="none")};})()');
+  if(overlayBlock.shade||!overlayBlock.hit)
+    throw Error("Node-RED overlay blocks real SVG drag; refusing blind clicks "+JSON.stringify(overlayBlock));
   // R08: actual Node-RED zoom action, then actual Chrome pointer events.
   await evaluate('RED.actions.invoke("core:zoom-out"); RED.actions.invoke("core:zoom-out");');
   await sleep(1100);
