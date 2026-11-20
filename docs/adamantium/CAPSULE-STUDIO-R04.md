@@ -54,7 +54,10 @@ The pseudocode approvedCoreCapability is not a real exported object. Discovery m
 
 - test/adamantium/capsule-signed-proposal-bridge.test.mjs uses disposable Ed25519 keypairs and purely mocked Core capability transport. It tests correct signed offers/receipts and proof of exact action routing; stale policy, wrong node, foreign graph, tampering, unsupported action contracts, expired offers, unauthenticated standby, replayed offer IDs, uncertain delivery, mismatched receipts and source secrecy.
 - test/adamantium/capsule-ir-proposal.test.mjs includes regression cases against disguised permission edges and policy-kind impersonation.
+- test/adamantium/capsule-signed-http.test.mjs runs a **real 127.0.0.1 HTTP exchange** against an ephemeral mock Core signer; it checks exact dynamic action routing, request CAS fields, signed receipt and refusal to retry a 503 whose remote outcome is unknown. This test does **not** prove a real MAS Core link.
 - .github/workflows/capsule-studio-r04.yml tests the complete capsule suite on Linux/Windows Node.js 22/24.
+
+**Verified on 2026-11-20:** isolated sparse checkout on the owner's Linux test host, unprivileged test user; official Node v22.16.0 and v24.11.1 binaries SHA-256-verified against the official Node release checksums. All **47/47** capsule R01–R04 tests passed on each version, including a real loopback HTTP mock Core integration and forged Ed25519 signatures. No live runtime writes or server process installs occurred. GitHub Actions Windows/Linux CI results must be checked separately.
 
 **Not proved:** Production Core accepts this contract, signed nonce persisted across restarts, external CAS is durable, lease/witness trust independence, real hot swap, any published language runtime, or cross-server failover.
 
