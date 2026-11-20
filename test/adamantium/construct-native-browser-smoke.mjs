@@ -240,9 +240,38 @@ try {
   await page.locator("#ada-vault-export-private").click();
   const full=JSON.parse(await page.locator("#ada-vault-json").inputValue());
   assert.deepEqual(full.entries.map(e=>e.id),["diag_pair","hidden_pair"]);
+  // R04: nested, pinned dependency closure. The composite is "open + paid +
+  // public-listed" but must NOT be exported while depending on private code.
+  await page.evaluate(()=>RED.view.select({nodes:RED.nodes.filterNodes({z:RED.workspaces.active()}).slice(0,2)}));
+  await page.locator("#ada-vault-id").fill("composite");
+  await page.locator("#ada-vault-title").fill("Composite graph");
+  await page.locator("#ada-vault-source").selectOption("open");
+  await page.locator("#ada-vault-distribution").selectOption("paid");
+  await page.locator("#ada-vault-public").check();
+  await page.locator("#ada-vault-deps").fill("diag_pair@1, hidden_pair@1");
+  page.once("dialog",dialog=>dialog.accept());
+  await page.locator("#ada-vault-save").click();
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem("adamantium.native-q-vault.r04")||"{}").entries?.length===3);
+  await page.locator("#ada-vault-export-public").click();
+  const safeExport=JSON.parse(await page.locator("#ada-vault-json").inputValue());
+  assert.deepEqual(safeExport.entries.map(e=>e.id),["diag_pair"],
+    "indirect dependence on closed source blocks publication");
+  await page.locator("#ada-native-cards .adamantium-construct-card")
+    .filter({hasText:"Composite graph"}).locator("button").click();
+  await page.waitForFunction(()=>!document.querySelector("#ada-vault-build").disabled);
+  assert.match(await page.locator("#ada-vault-plan").innerText(),/diag_pair@1/);
+  assert.match(await page.locator("#ada-vault-plan").innerText(),/hidden_pair@1/);
+  assert.match(await page.locator("#ada-vault-plan").innerText(),/Всего: 6 нод/);
+  await page.locator("#ada-vault-build").click();
+  await page.waitForFunction(()=>document.getElementById("adamantium-construct-native-overlay").hidden);
+  await page.mouse.move(420,530);
+  await page.mouse.click(420,530);
+  await page.waitForFunction(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length===10,null,{timeout:15000});
+  const compoundNodes=await page.evaluate(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).map(n=>n.id));
+  assert.equal(new Set(compoundNodes).size,10);
   assert.equal(new Set(nodes.map(n=>n.id)).size,nodes.length);
   assert.equal(errors.length,0,"browser JS errors: "+errors.join("; "));
-  console.log("NATIVE_Q_SMOKE_OK stamped=8 saved_clone=2 auto_new_tab=2 reactive_add_cleanup=true vault_plan_private_public=true locked_guard=true builtins="+cards+" port="+port);
+  console.log("NATIVE_Q_SMOKE_OK stamped=8 saved_clone=2 auto_new_tab=2 reactive_add_cleanup=true vault_plan_private_public=true vault_dependency_graph=6 locked_guard=true builtins="+cards+" port="+port);
 } finally {
   if(browser)await browser.close();
   if(server){
