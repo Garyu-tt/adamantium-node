@@ -1,0 +1,83 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {CapsuleStudio} from "../../adamantium/capsule-studio.mjs";
+import {createCapsuleIRProposal,inspectCapsuleIRProposal} from "../../adamantium/capsule-ir-proposal.mjs";
+import {InMemoryCapsuleDraftLedger,DRAFT_FORMAT} from "../../adamantium/capsule-draft-ledger.mjs";
+
+const port=(tag,direction)=>({tag,direction,semantics:"data",dataType:"core.json@1"});
+function sample(){
+ const studio=new CapsuleStudio(),root=studio.createGraph("Root");
+ const def=studio.createDefinition({name:"Transform",language:"rust",source:"// opaque source",ports:[port("input","input"),port("output","output")]});
+ const x=studio.place(root,def.id),y=studio.place(root,def.id);
+ studio.connect(root,{fromId:x,fromTag:"output",toId:y,toTag:"input"});
+ return {studio,root,def,x,y};
+}
+test("local draft ledger verifies optimistic concurrency and records nonauthoritative receipts",()=>{
+ const {studio}=sample();
+ const baseline=createCapsuleIRProposal(studio,{revision:1});
+ const store=new InMemoryCapsuleDraftLedger(baseline);
+ const start=store.status();
+ assert.equal(start.format,DRAFT_FORMAT);
+ assert.equal(start.authoritative,false);
+ assert.equal(start.runtimeActivated,false);
+ studio.createCapsule(studio.rootGraphId,"New capsule");
+ const candidate=createCapsuleIRProposal(studio,{revision:2});
+ const req={requestId:"request_1",expectedRevision:start.revision,expectedHead:start.head,candidate};
+ const one=store.propose(req);
+ const again=store.propose(req);
+ assert.deepEqual(one,again);
+ assert.equal(one.status,"staged-unverified-authority");
+ assert.equal(one.masApproved,false);
+ assert.equal(one.runtimeActivated,false);
+ assert.equal(store.status().revision,1);
+ const applied=store.applyLocal({requestId:"request_1",expectedRevision:start.revision,expectedHead:start.head});
+ assert.equal(applied.action,"applied-local-draft");
+ assert.equal(applied.authoritative,false);
+ assert.equal(store.status().revision,2);
+ assert.equal(store.current().graphs.length,2);
+ const after=store.status();
+ const undone=store.rollbackLocal({requestId:"rollback_1",expectedRevision:after.revision,expectedHead:after.head});
+ assert.equal(undone.action,"rolled-back-local-draft");
+ assert.equal(undone.revision,3);
+ assert.equal(store.current().graphs.length,1);
+ assert.equal(inspectCapsuleIRProposal(store.current()).revision,3);
+ assert.notEqual(store.status().head,start.head);
+});
+test("stale CAS and replay under a changed idempotency key are rejected",()=>{
+ const {studio}=sample();
+ const baseline=createCapsuleIRProposal(studio);
+ const store=new InMemoryCapsuleDraftLedger(baseline),s=store.status();
+ const v2=createCapsuleIRProposal(studio,{revision:2});
+ assert.throws(()=>store.propose({requestId:"new",expectedRevision:0,expectedHead:s.head,candidate:v2}),/stale expectedRevision/);
+ assert.throws(()=>store.propose({requestId:"new",expectedRevision:1,expectedHead:"wrong",candidate:v2}),/stale expectedHead/);
+ store.propose({requestId:"new",expectedRevision:1,expectedHead:s.head,candidate:v2});
+ const wrong=structuredClone(v2);wrong.mode="execute";
+ assert.throws(()=>store.propose({requestId:"new",expectedRevision:1,expectedHead:s.head,candidate:wrong}),/forbidden authority flags/);
+ const changed=structuredClone(v2);changed.definitionHandles[0].portCount=99;
+ assert.throws(()=>store.propose({requestId:"new",expectedRevision:1,expectedHead:s.head,candidate:changed}),/idempotency key reused/);
+ assert.throws(()=>store.applyLocal({requestId:"new",expectedRevision:1,expectedHead:"wrong"}),/proposal preconditions/);
+ assert.equal(store.status().revision,1);
+});
+test("wrong revision, duplicate staging and unbound root identity fail closed",()=>{
+ const {studio,root}=sample();
+ const store=new InMemoryCapsuleDraftLedger(createCapsuleIRProposal(studio));
+ const status=store.status();
+ const next=createCapsuleIRProposal(studio,{revision:2});
+ const wrong=structuredClone(next);wrong.revision=4;
+ assert.throws(()=>store.propose({requestId:"r_1",expectedRevision:1,expectedHead:status.head,candidate:wrong}),/invalid revision|candidate revision/);
+ const missing=structuredClone(next);missing.rootGraphId="missing";
+ assert.throws(()=>store.propose({requestId:"r_1",expectedRevision:1,expectedHead:status.head,candidate:missing}),/missing proposal root|root/);
+ assert.equal(store.current().rootGraphId,root);
+});
+test("local rollback refuses stale head, and staging does not leak executable permissions",()=>{
+ const {studio}=sample(),base=createCapsuleIRProposal(studio);
+ const ledger=new InMemoryCapsuleDraftLedger(base);
+ const curr=ledger.status();
+ assert.throws(()=>ledger.rollbackLocal({requestId:"roll",expectedRevision:1,expectedHead:curr.head}),/no prior/);
+ const staged=ledger.propose({requestId:"req",expectedRevision:1,expectedHead:curr.head,candidate:createCapsuleIRProposal(studio,{revision:2})});
+ assert.equal(staged.externalSideEffects,false);
+ assert.equal(ledger.status().pendingCount,1);
+ assert.equal(ledger.discardLocal("req").action,"discarded-local-draft");
+ assert.equal(ledger.status().pendingCount,0);
+ assert.throws(()=>ledger.applyLocal({requestId:"req",expectedRevision:1,expectedHead:curr.head}),/no pending draft/);
+});
