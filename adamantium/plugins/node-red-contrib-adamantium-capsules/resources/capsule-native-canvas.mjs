@@ -393,9 +393,28 @@ export function mountNativeCapsuleWorkspace({
     // Do not send native Node-RED canvas mouse events through the draft lens.
     event.stopPropagation();
   }
-  for(const event of ["mousedown","mouseup","dblclick","pointerdown","touchstart"]){
+  function protectNativeFlowShortcuts(event){
+    if(closed)return;
+    const target=event.target;
+    const tag=String(target?.tagName||"").toLowerCase();
+    // Preserve inputs, forms and accessibility navigation outside workspace.
+    if(["input","textarea","select","button"].includes(tag)||
+      target?.isContentEditable||event.key==="Tab"||event.key==="F5"||
+      (event.ctrlKey||event.metaKey)&&event.key?.toLowerCase()==="r")return;
+    // Native flow Delete / Deploy / clipboard shortcuts must never act on
+    // previously selected Node-RED flow nodes behind the Capsule overlay.
+    event.stopImmediatePropagation?.();
+    event.stopPropagation();
+    if(["Delete","Backspace"," ","Enter"].includes(event.key)||
+      event.ctrlKey||event.metaKey)event.preventDefault();
+    if(event.key==="Escape"){
+      selectedPort=null;selected.clear();render();
+    }
+  }
+  for(const event of ["mousedown","mouseup","mousemove","dblclick","pointerdown","touchstart"]){
     layer.addEventListener(event,swallow);
   }
+  windowRef.addEventListener("keydown",protectNativeFlowShortcuts,true);
   windowRef.addEventListener("storage",storageChanged);
   windowRef.addEventListener("pointermove",pointerMove);
   windowRef.addEventListener("pointerup",pointerEnd);
@@ -403,6 +422,7 @@ export function mountNativeCapsuleWorkspace({
   function close(){
     if(closed)return;
     closed=true;drag=null;
+    windowRef.removeEventListener("keydown",protectNativeFlowShortcuts,true);
     windowRef.removeEventListener("storage",storageChanged);
     windowRef.removeEventListener("pointermove",pointerMove);
     windowRef.removeEventListener("pointerup",pointerEnd);
