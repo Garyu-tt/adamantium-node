@@ -19,7 +19,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         node: ["22", "24"]
-    runs-on: ${D}{{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout Adamantium-node
         uses: actions/checkout@v4
@@ -34,7 +34,7 @@ jobs:
       - name: Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${D}{{ matrix.node }}
+          node-version: ${{ matrix.node }}
       - name: Build canonical C++17 compiler and adapter
         shell: pwsh
         run: |
