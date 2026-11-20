@@ -140,6 +140,7 @@ try {
   assert.equal(await page.evaluate(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length),2);
   await page.evaluate(()=>{RED.nodes.workspace(RED.workspaces.active()).locked=false;});
   // R03: an explicit rule builds a bounded native preset on a user-created node.
+  await page.locator("#ada-r3-panel summary").click();
   await page.locator("#ada-r3-trigger").selectOption("inject");
   await page.locator("#ada-r3-preset").selectOption("catch_debug");
   await page.locator("#ada-r3-cleanup").check();
