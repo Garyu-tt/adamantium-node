@@ -43,4 +43,6 @@ Offline Node.js built-in tests:
 
     node --test test/adamantium/construct-native.test.mjs
 
-GitHub Actions matrix on Linux/Windows, Node 22/24 checks code and source-resource byte identity. This does not substitute for real browser acceptance: test a disposable Node-RED 5 safe-mode userDir and verify Q overlay, native drag/Undo, locked flow rejection, Subflow instance import, and consent prompts before any production install.
+GitHub Actions matrix checks Linux/Windows Node 22/24. The separate browser acceptance test now runs a disposable Node-RED 5.0.10 safe-mode userDir plus Chromium: Q menu opens on the native editor, 4 stamped assemblies become 8 nodes and 4 internal wires, Undo/Redo restores the whole stamp, a selected pair is saved as a local snapshot and imported again with 2 new IDs, a new tab receives 2 nodes via opt-in automation, and locked flows reject mutation. No browser page errors observed.
+
+This is real isolated editor acceptance, not production acceptance. Manual QA remains for mobile/touch controls, import of shared native Subflow instances, accessibility, and live authorization/adminAuth. VM122 and all production flows remain unchanged.
