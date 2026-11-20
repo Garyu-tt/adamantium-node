@@ -189,9 +189,60 @@ try {
   await page.waitForSelector("#adamantium-construct-native-overlay:not([hidden])");
   await page.evaluate(()=>RED.events.emit("registry:node-type-added","adamantium_browser_test_type"));
   await page.waitForSelector("#ada-native-cards .adamantium-construct-card");
+  // R04: two independent classifications, immutable package digest and
+  // staged native placement from a verified dependency plan.
+  await page.evaluate(()=>{
+    const pair=RED.nodes.filterNodes({z:RED.workspaces.active()});
+    RED.view.select({nodes:pair});
+  });
+  await page.locator("[data-ada-tab='vault']").click();
+  await page.locator("#ada-vault-id").fill("diag_pair");
+  await page.locator("#ada-vault-title").fill("Paid diagnostic");
+  await page.locator("#ada-vault-version").fill("1");
+  await page.locator("#ada-vault-source").selectOption("open");
+  await page.locator("#ada-vault-distribution").selectOption("paid");
+  await page.locator("#ada-vault-public").check();
+  page.once("dialog",dialog=>dialog.accept());
+  await page.locator("#ada-vault-save").click();
+  await page.waitForFunction(()=>{
+    const v=JSON.parse(localStorage.getItem("adamantium.native-q-vault.r04")||"{}");
+    return v.entries?.length===1&&/^sha256:[0-9a-f]{64}$/.test(v.entries[0].digest);
+  },null,{timeout:15000});
+  await page.locator("#ada-native-cards .adamantium-construct-card button").first().click();
+  await page.waitForFunction(()=>document.querySelector("#ada-vault-build")?.disabled===false);
+  assert.match(await page.locator("#ada-vault-plan").innerText(),/2 нод/);
+  await page.locator("#ada-vault-build").click();
+  await page.waitForFunction(()=>document.getElementById("adamantium-construct-native-overlay")?.hidden===true);
+  await page.mouse.move(480,410);
+  await page.mouse.click(480,410);
+  await page.waitForFunction(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length===4,null,{timeout:15000});
+  const constructedIds=await page.evaluate(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).map(n=>n.id));
+  assert.equal(new Set(constructedIds).size,4);
+  await page.evaluate(()=>document.body.focus());
+  await page.keyboard.press("q");
+  await page.waitForSelector("#adamantium-construct-native-overlay:not([hidden])");
+  await page.locator("[data-ada-tab='vault']").click();
+  await page.evaluate(()=>RED.view.select({nodes:RED.nodes.filterNodes({z:RED.workspaces.active()}).slice(0,2)}));
+  await page.locator("#ada-vault-id").fill("hidden_pair");
+  await page.locator("#ada-vault-title").fill("Private local graph");
+  await page.locator("#ada-vault-source").selectOption("closed");
+  await page.locator("#ada-vault-distribution").selectOption("free");
+  await page.locator("#ada-vault-public").uncheck();
+  page.once("dialog",dialog=>dialog.accept());
+  await page.locator("#ada-vault-save").click();
+  await page.waitForFunction(()=>JSON.parse(localStorage.getItem("adamantium.native-q-vault.r04")||"{}").entries?.length===2);
+  await page.locator("#ada-vault-export-public").click();
+  const exported=JSON.parse(await page.locator("#ada-vault-json").inputValue());
+  assert.deepEqual(exported.entries.map(e=>e.id),["diag_pair"]);
+  assert.equal(exported.entries[0].distribution,"paid");
+  assert.equal(exported.entries[0].sourceAccess,"open");
+  page.once("dialog",dialog=>dialog.accept());
+  await page.locator("#ada-vault-export-private").click();
+  const full=JSON.parse(await page.locator("#ada-vault-json").inputValue());
+  assert.deepEqual(full.entries.map(e=>e.id),["diag_pair","hidden_pair"]);
   assert.equal(new Set(nodes.map(n=>n.id)).size,nodes.length);
   assert.equal(errors.length,0,"browser JS errors: "+errors.join("; "));
-  console.log("NATIVE_Q_SMOKE_OK stamped=8 saved_clone=2 auto_new_tab=2 reactive_add_cleanup=true locked_guard=true builtins="+cards+" port="+port);
+  console.log("NATIVE_Q_SMOKE_OK stamped=8 saved_clone=2 auto_new_tab=2 reactive_add_cleanup=true vault_plan_private_public=true locked_guard=true builtins="+cards+" port="+port);
 } finally {
   if(browser)await browser.close();
   if(server){
