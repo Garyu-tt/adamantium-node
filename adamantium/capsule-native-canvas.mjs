@@ -9,8 +9,9 @@
 import {CapsuleStudio} from "./capsule-studio.mjs";
 import {extractSelection} from "./capsule-extract.mjs";
 import {layoutCapsuleGraph} from "./capsule-native-layout.mjs";
+import {CapsuleDraftStorage,DEFAULT_STORAGE_KEY} from "./capsule-draft-storage.mjs";
 
-export const STORAGE="adamantium.capsule-studio.r01";
+export const STORAGE=DEFAULT_STORAGE_KEY;
 const NS="http://www.w3.org/2000/svg";
 const T={
   background:"var(--red-ui-primary-background-color,#18222d)",
@@ -69,6 +70,7 @@ export function mountNativeCapsuleWorkspace({
   layer.setAttribute("role","group");
   layer.setAttribute("aria-label","Capsule Studio draft graph on native Node-RED SVG canvas");
   stage.appendChild(layer);
+  const draftStore=new CapsuleDraftStorage({storage,key:STORAGE});
   let snapshot,model,positions,templates,activeGraph,selectedPort=null;
   const expanded=new Set(),selected=new Set();
   let status="Черновик: изменения не передаются в исполняемые flow Node-RED.";
@@ -98,7 +100,7 @@ export function mountNativeCapsuleWorkspace({
   function load(preserve=true){
     const previous=activeGraph;
     try{
-      const data=JSON.parse(storage.getItem(STORAGE));
+      const {value:data}=draftStore.read();
       if(!data||typeof data!=="object")throw new TypeError("missing persisted draft");
       const restored=CapsuleStudio.restore(data.model);
       model=restored;positions=sanePositionMap(data.positions,restored);
@@ -116,8 +118,8 @@ export function mountNativeCapsuleWorkspace({
   function persist(){
     const data={model:model.snapshot(),positions};
     if(templates!==undefined)data.templates=templates;
-    storage.setItem(STORAGE,JSON.stringify(data));
-    snapshot=data;
+    const revision=draftStore.write(data);
+    snapshot={...data,draftRevision:revision};
   }
   function transact(operation,message){
     if(closed)throw new Error("Capsule workspace closed");
@@ -195,9 +197,13 @@ export function mountNativeCapsuleWorkspace({
   }
   function pointerEnd(){
     if(!drag)return;
-    drag=null;
+    const ended=drag;drag=null;
     try{persist();notify("Положение ноды сохранено локально.");render();}
-    catch(err){notify(err.message,true);render();}
+    catch(err){
+      positions[ended.graphId]??={};
+      positions[ended.graphId][ended.id]={...ended.start};
+      notify(err.message,true);render();
+    }
   }
   function attachDrag(header,node){
     header.addEventListener("pointerdown",event=>{
@@ -350,7 +356,9 @@ export function mountNativeCapsuleWorkspace({
     for(const [caption,callback,width] of buttons){
       addButton(toolbar,x,30,width,caption,callback);x+=width+7;
     }
-    text(toolbar,0,98,status,{"font-size":11,fill:T.dim});
+    text(toolbar,0,98,status+" · Local r"+draftStore.revision,{
+      "font-size":11,fill:T.dim
+    });
   }
   function render(){
     if(closed)return;
@@ -387,7 +395,9 @@ export function mountNativeCapsuleWorkspace({
     layer.setAttribute("data-edge-count",String(layout.edges.length));
   }
   function storageChanged(event){
-    if(event.key===STORAGE){load();render();}
+    if(event.key!==STORAGE)return;
+    // External drafts supersede any uncommitted pointer drag.
+    drag=null;load();render();
   }
   function swallow(event){
     // Do not send native Node-RED canvas mouse events through the draft lens.
@@ -433,5 +443,6 @@ export function mountNativeCapsuleWorkspace({
   catch(err){close();throw err;}
   return {close,render,refresh:()=>{load();render();},
     inspect:()=>({activeGraph,nodes:model.graph(activeGraph).instances.length,
-      edges:model.graph(activeGraph).edges.length,closed,authority:"none",runtimeActivated:false})};
+      edges:model.graph(activeGraph).edges.length,closed,authority:"none",runtimeActivated:false,
+      localRevision:draftStore.revision,localConflict:draftStore.stale})};
 }
