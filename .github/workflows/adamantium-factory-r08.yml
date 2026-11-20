@@ -1,0 +1,55 @@
+name: Adamantium Factory R08 Independent Anchor Candidate
+on:
+  push:
+    paths:
+      - 'adamantium/node-factory/independent-anchor-r08.mjs'
+      - 'adamantium/node-factory/anchor-studio-r08.mjs'
+      - 'test/adamantium/node-factory-anchor*r08.test.mjs'
+      - '.github/workflows/adamantium-factory-r08.yml'
+      - 'docs/FACTORY-R08.md'
+  pull_request:
+    paths:
+      - 'adamantium/node-factory/independent-anchor-r08.mjs'
+      - 'adamantium/node-factory/anchor-studio-r08.mjs'
+      - 'test/adamantium/node-factory-anchor*r08.test.mjs'
+      - '.github/workflows/adamantium-factory-r08.yml'
+      - 'docs/FACTORY-R08.md'
+permissions:
+  contents: read
+jobs:
+  anchor-core:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Independently signed anchor security and witness continuity tests
+        run: node --test test/adamantium/node-factory-anchor-r08.test.mjs
+  anchor-real-runtime:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install pinned Node-RED 5 without install scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Real Node-RED 5 → R05 → R06 → R07 → R08 anchor
+        run: node --test test/adamantium/node-factory-anchor-real-r08.test.mjs
