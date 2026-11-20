@@ -49,7 +49,7 @@ test("Capsule Studio preview serves only static editor assets on loopback",async
 test("Capsule R05 workspace is nonzero-height and exposes Construct plus IR controls",async()=>{
   const file=fileURLToPath(new URL("../../adamantium/capsule-preview/index.html",import.meta.url));
   const html=await readFile(file,"utf8");
-  assert.match(html,/Capsule Studio R05/);
+  assert.match(html,/Capsule Studio R08/);
   // Without flex sizing the absolutely positioned #canvas has height 0.
   assert.match(html,/#workspace\s*\{[^}]*flex:\s*1 1 auto;[^}]*min-height:\s*0;/);
   assert.match(html,/#canvas\s*\{position:absolute;inset:0;overflow:auto/);
