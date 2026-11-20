@@ -146,10 +146,10 @@ test("persisted audit tampering is detected before operating and doesn't overwri
     await h.inbox.close();
     const file=path.join(h.dir,"inbox.json");
     const saved=JSON.parse(await fs.readFile(file,"utf8"));
-    saved.audit[0].kind="not_the_original";
+    saved.state.audit[0].kind="not_the_original";
     await fs.writeFile(file,JSON.stringify(saved));
-    await assert.rejects(DurableCapsuleProposalInbox.open(h.settings),/corrupt audit chain/);
-    assert.equal(JSON.parse(await fs.readFile(file,"utf8")).audit[0].kind,"not_the_original");
+    await assert.rejects(DurableCapsuleProposalInbox.open(h.settings),/invalid snapshot signature/);
+    assert.equal(JSON.parse(await fs.readFile(file,"utf8")).state.audit[0].kind,"not_the_original");
   } finally {await h.teardown();}
 });
 test("inbox refuses to initialize with no explicit baseline or with bad signing key",async()=>{
@@ -162,4 +162,38 @@ test("inbox refuses to initialize with no explicit baseline or with bad signing 
       ...h.settings,directory:extra,privateKeyPem:"not a valid key"
     }));
   }finally{await h.teardown();await fs.rm(extra,{recursive:true,force:true});}
+});
+
+test("signed snapshot rejects editing the Graph IR without access to the private signer",async()=>{
+ const h=await harness();
+ try{
+   await h.inbox.close();
+   const file=path.join(h.dir,"inbox.json");
+   const snapshot=JSON.parse(await fs.readFile(file,"utf8"));
+   snapshot.state.current.graphs[0].domain="interface";
+   await fs.writeFile(file,JSON.stringify(snapshot));
+   await assert.rejects(DurableCapsuleProposalInbox.open(h.settings),/invalid snapshot signature/);
+ }finally{await h.teardown();}
+});
+test("two concurrent submissions on one signed offer serialize and cannot double-spend it",async()=>{
+ const h=await harness();
+ try{
+   const offer=(await h.transport.preflight({
+     nodeId:NODE,graphId:h.root,contract:"mechanicus.graph.propose/1"
+   })).signedOffer.payload;
+   const body=(requestId)=>({nodeId:NODE,actionId:offer.actionId,payload:{
+     format:"adamantium.core-graph-proposal-request/1",requestId,
+     nodeId:NODE,graphId:h.root,policySha256:POLICY,offerId:offer.offerId,
+     expectedRevision:1,expectedHeadSha256:offer.headSha256,proposedRevision:2,
+     proposalSha256:createHash("sha256").update(JSON.stringify(h.candidate)).digest("hex"),
+     proposal:h.candidate
+   }});
+   const results=await Promise.allSettled([
+     h.transport.invoke(body("different_1")),h.transport.invoke(body("different_2"))
+   ]);
+   assert.equal(results.filter(x=>x.status==="fulfilled").length,1);
+   assert.equal(results.filter(x=>x.status==="rejected").length,1);
+   assert.equal(h.inbox.summary().reviewQueue,1);
+   assert.equal(h.checks.native,1);
+ }finally{await h.teardown();}
 });
