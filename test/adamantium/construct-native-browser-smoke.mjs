@@ -88,6 +88,10 @@ try {
   });
   assert.equal(links.length,4,"four independent connections");
   assert.ok(links.every(e=>e.from==="inject"&&e.to==="debug"));
+  await page.evaluate(()=>RED.actions.invoke("core:undo"));
+  await page.waitForFunction(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length===0);
+  await page.evaluate(()=>RED.actions.invoke("core:redo"));
+  await page.waitForFunction(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length===8);
   // Snapshot the first internally connected pair through the real Q menu.
   await page.evaluate(()=>{
     let chosen=[];RED.nodes.eachLink(link=>{if(!chosen.length)chosen=[link.source,link.target];});
