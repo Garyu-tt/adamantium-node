@@ -84,6 +84,10 @@ test("writes atomic private 0600 snapshot without token or source leakage",async
  try{
   const snap=await observe("http://127.0.0.1:1885/",credentials,{fetchImpl:fakeFetch().impl});
   const path=join(dir,"snapshot.json");
+  if(process.platform==="win32"){
+   await assert.rejects(persistObservation(path,snap),/Windows ACL support/);
+   return;
+  }
   await persistObservation(path,snap);
   const mode=(await stat(path)).mode&0o777;
   assert.equal(mode,0o600);
