@@ -1,5 +1,6 @@
 import {CapsuleStudio,SIDES} from "../capsule-studio.mjs";
 import {extractSelection,CapsuleTemplateLibrary} from "../capsule-extract.mjs";
+import {createCapsuleIRProposal,inspectCapsuleIRProposal} from "../capsule-ir-proposal.mjs";
 
 // Offline authoring preview only: no eval(), worker, process spawn or deployment.
 const STORAGE="adamantium.capsule-studio.r01";
@@ -464,6 +465,21 @@ $("field").addEventListener("drop",e=>{
   const x=e.clientX-rect.left-95,y=e.clientY-rect.top-25;
   if(studio.definitions[id])addInstance(id,x,y);
   else if(library.templates[id])addTemplate(id,x,y);
+});
+$("exportIR").addEventListener("click",()=>{
+  try {
+    // Candidate revision is illustrative, not an authoritative server revision.
+    const draft=createCapsuleIRProposal(studio,{revision:1,domain:"program"});
+    const summary=inspectCapsuleIRProposal(draft);
+    const json=JSON.stringify(draft,null,2);
+    const url=URL.createObjectURL(new Blob([json],{type:"application/json"}));
+    const link=el("a");link.href=url;link.download="adamantium-graph-ir-proposal-r03.json";link.click();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+    message("IR-предложение: "+summary.graphCount+" графов, "+summary.boundaryCount+
+      " портов, "+summary.definitionCount+" определений. Никакой код не выполнялся.");
+  } catch(err) {
+    message("IR-предложение отклонено: "+err.message,true);
+  }
 });
 $("export").addEventListener("click",()=>{
   try{
