@@ -92,7 +92,7 @@ test("plugin is a real Node-RED editor plugin, no runtime executable nodes",asyn
  assert.equal(pkg.scripts?.postinstall,undefined);
  assert.equal(await readFile(new URL("resources/core.mjs",root),"utf8"),
    await readFile(new URL("../../adamantium/construct-native/core.mjs",import.meta.url),"utf8"));
- for(const filename of ["reactor.mjs","reactor-editor.mjs","vault.mjs","vault-editor.mjs"]){
+ for(const filename of ["reactor.mjs","reactor-editor.mjs","vault.mjs","vault-editor.mjs","graph-tx.mjs","graph-tx-editor.mjs"]){
    assert.equal(await readFile(new URL("resources/"+filename,root),"utf8"),
      await readFile(new URL("../../adamantium/construct-native/"+filename,import.meta.url),"utf8"));
  }

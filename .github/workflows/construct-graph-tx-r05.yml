@@ -1,0 +1,28 @@
+name: Adamantium Construct Graph Transactions R05
+on:
+  push:
+    branches:
+      - feature/construct-graph-tx-r05
+  pull_request:
+    paths:
+      - "adamantium/construct-native/graph-tx.mjs"
+      - "adamantium/plugins/node-red-contrib-adamantium-construct/**"
+      - "test/adamantium/construct-graph-tx.test.mjs"
+      - ".github/workflows/construct-graph-tx-r05.yml"
+jobs:
+  revisioned-sandbox:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [22, 24]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Bounded transaction and pinned revision test
+        run: |
+          node --check adamantium/construct-native/graph-tx.mjs
+          node --test test/adamantium/construct-graph-tx.test.mjs

@@ -269,9 +269,33 @@ try {
   await page.waitForFunction(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length===10,null,{timeout:15000});
   const compoundNodes=await page.evaluate(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).map(n=>n.id));
   assert.equal(new Set(compoundNodes).size,10);
+  // R05 Q integration: read-only handoff from real selection and an isolated
+  // hot-swap simulation. Not a Node-RED deploy and no live runtime edits.
+  await page.evaluate(()=>{RED.view.select({nodes:RED.nodes.filterNodes({z:RED.workspaces.active()}).slice(0,2)});document.body.focus();});
+  await page.keyboard.press("q");
+  await page.waitForSelector("#adamantium-construct-native-overlay:not([hidden])");
+  await page.locator("#ada-r5-panel summary").click();
+  await page.locator("#ada-r5-seed").click();
+  await page.waitForFunction(()=>document.querySelector("#ada-r5-output")?.textContent.includes("local_mirror_initialized"),null,{timeout:15000});
+  await page.locator("#ada-r5-propose").click();
+  await page.waitForFunction(()=>document.querySelector("#ada-r5-output")?.textContent.includes("adamantium.graph-manager-review/1"),null,{timeout:15000});
+  const handoff=JSON.parse(await page.locator("#ada-r5-output").innerText());
+  assert.equal(handoff.noExecution,true);
+  assert.equal(handoff.requestedAction,"review_only");
+  assert.ok(/^sha256:/.test(handoff.digest));
+  assert.match(await page.locator("#ada-r5-mode").innerText(),/read_only/);
+  await page.locator("#ada-r5-demo").click();
+  await page.waitForFunction(()=>document.querySelector("#ada-r5-output")?.textContent.includes("activeAfterRollback"),null,{timeout:15000});
+  const sim=JSON.parse(await page.locator("#ada-r5-output").innerText());
+  assert.equal(sim.mode,"sandbox_only");
+  assert.equal(sim.productionWrites,0);
+  assert.equal(sim.oldTicket.revision,1);
+  assert.equal(sim.newTicket.revision,2);
+  assert.equal(sim.activeAfterRollback,1);
+  assert.equal(await page.evaluate(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length),10);
   assert.equal(new Set(nodes.map(n=>n.id)).size,nodes.length);
   assert.equal(errors.length,0,"browser JS errors: "+errors.join("; "));
-  console.log("NATIVE_Q_SMOKE_OK stamped=8 saved_clone=2 auto_new_tab=2 reactive_add_cleanup=true vault_plan_private_public=true vault_dependency_graph=6 locked_guard=true builtins="+cards+" port="+port);
+  console.log("NATIVE_Q_SMOKE_OK stamped=8 saved_clone=2 auto_new_tab=2 reactive_add_cleanup=true vault_plan_private_public=true vault_dependency_graph=6 r05_handoff_simulation=true locked_guard=true builtins="+cards+" port="+port);
 } finally {
   if(browser)await browser.close();
   if(server){
