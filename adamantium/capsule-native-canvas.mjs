@@ -10,6 +10,7 @@ import {CapsuleStudio} from "./capsule-studio.mjs";
 import {extractSelection} from "./capsule-extract.mjs";
 import {layoutCapsuleGraph} from "./capsule-native-layout.mjs";
 import {CapsuleDraftStorage,DEFAULT_STORAGE_KEY} from "./capsule-draft-storage.mjs";
+import {workspacePointFromPointer} from "./capsule-native-pointer.mjs";
 
 export const STORAGE=DEFAULT_STORAGE_KEY;
 const NS="http://www.w3.org/2000/svg";
@@ -168,24 +169,18 @@ export function mountNativeCapsuleWorkspace({
     }),"Типизированное соединение создано. Runtime не затронут.");
   }
   function pointerPoint(event){
-    const ctm=layer.getScreenCTM?.();
-    if(!ctm||typeof ctm.inverse!=="function")
-      return {x:event.clientX,y:event.clientY};
-    const owner=layer.ownerSVGElement;
-    if(owner&&typeof owner.createSVGPoint==="function"){
-      const point=owner.createSVGPoint();point.x=event.clientX;point.y=event.clientY;
-      return point.matrixTransform(ctm.inverse());
-    }
-    if(typeof windowRef.DOMPoint==="function"){
-      const point=new windowRef.DOMPoint(event.clientX,event.clientY);
-      return point.matrixTransform(ctm.inverse());
-    }
-    return {x:event.clientX,y:event.clientY};
+    return workspacePointFromPointer(event,layer,windowRef);
   }
   function pointerMove(event){
     if(!drag)return;
     if(drag.graphId!==activeGraph){drag=null;return;}
-    const p=pointerPoint(event);
+    let p;
+    try{p=pointerPoint(event);}
+    catch(error){
+      positions[drag.graphId]??={};
+      positions[drag.graphId][drag.id]={...drag.start};
+      drag=null;notify(error.message,true);render();return;
+    }
     const previous=positions[activeGraph]?.[drag.id]||drag.start;
     positions[activeGraph]??={};
     positions[activeGraph][drag.id]={
@@ -216,7 +211,9 @@ export function mountNativeCapsuleWorkspace({
       event.preventDefault();
       positions[activeGraph]??={};
       const p=positions[activeGraph][node.id]||{x:node.x,y:node.y};
-      drag={id:node.id,graphId:activeGraph,origin:pointerPoint(event),start:{x:p.x,y:p.y}};
+      try{
+        drag={id:node.id,graphId:activeGraph,origin:pointerPoint(event),start:{x:p.x,y:p.y}};
+      }catch(error){drag=null;notify(error.message,true);render();}
     });
     if(node.kind==="capsule"){
       header.addEventListener("dblclick",event=>{
