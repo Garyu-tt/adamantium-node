@@ -514,4 +514,19 @@ $("reset").addEventListener("click",()=>{
   studio=seed();library=new CapsuleTemplateLibrary();activeGraph=studio.rootGraphId;selectedPort=null;selected.clear();
   persist();render();message("Демонстрационный граф восстановлен.");
 });
+// Cross-document synchronization: the native Node-RED SVG editor writes to
+// the same local-only origin key. Never overwrite an actively edited form.
+window.addEventListener("storage",event=>{
+  if(event.key!==STORAGE||!event.newValue)return;
+  if(document.querySelector("dialog[open]")){
+    message("Граф изменён во внешнем редакторе. Закрой форму и обнови страницу.",true);
+    return;
+  }
+  const previous=activeGraph;
+  load();
+  if(studio.graphs[previous])activeGraph=previous;
+  selected.clear();selectedPort=null;
+  render();
+  message("Граф обновлён из основного SVG-холста Node-RED.");
+});
 load();render();

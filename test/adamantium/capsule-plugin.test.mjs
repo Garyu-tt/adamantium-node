@@ -14,7 +14,7 @@ test("Node-RED editor package declares a real editor plugin (no executable runti
  assert.equal(pkg.scripts?.postinstall,undefined);
 });
 test("packaged resources match single source-of-truth files byte-for-byte",async()=>{
- for(const path of ["capsule-studio.mjs","capsule-extract.mjs","capsule-ir-proposal.mjs","editor-projection.mjs"]){
+ for(const path of ["capsule-studio.mjs","capsule-extract.mjs","capsule-ir-proposal.mjs","editor-projection.mjs","capsule-canvas-geometry.mjs","capsule-native-canvas.mjs"]){
   assert.equal(await load("resources/"+path),await load(path,root));
  }
  for(const path of ["index.html","app.mjs"]){
@@ -45,7 +45,14 @@ test("Node-RED sidebar registration, lazy iframe and keyboard action work under 
   actions:{add:(name,fn)=>{actions[name]=fn;}}
  };
  let opened;
- vm.runInNewContext(match[1],{RED,$,document:{baseURI:"https://example.org/red/"},window:{open:(...args)=>{opened=args;}},URL});
+ const styles=[];
+ const document={
+   baseURI:"https://example.org/red/",
+   getElementById:()=>null,
+   createElement:tag=>({tag,href:null,id:null,rel:null}),
+   head:{appendChild:style=>{styles.push(style);}}
+ };
+ vm.runInNewContext(match[1],{RED,$,document,window:{open:(...args)=>{opened=args;}},URL});
  assert.equal(registered.name,"adamantium-capsules-r02");
  registered.def.onadd();
  assert.equal(tab.id,"adamantium-capsules-r02");
@@ -53,6 +60,12 @@ test("Node-RED sidebar registration, lazy iframe and keyboard action work under 
  assert.equal(tab.label,"Capsules");
  assert.ok(typeof tab.onchange==="function");
  assert.equal(tab.content.children.length,3);
+ assert.equal(styles.length,1,"native canvas stylesheet must be scoped to plugin");
+ assert.match(styles[0].href,/resources\/node-red-contrib-adamantium-capsules\/canvas\.css$/);
+ assert.equal(typeof actions["adamantium:show-native-capsule-canvas"],"function");
+ assert.equal(typeof actions["adamantium:hide-native-capsule-canvas"],"function");
+ assert.ok(widgets.some(w=>w.attrs.text==="Основной SVG"));
+ assert.ok(widgets.some(w=>w.attrs.text==="Скрыть SVG"));
  const frame=widgets.find(w=>w.tag==="<iframe>");
  assert.ok(frame);
  assert.equal(frame.attrs.src,undefined,"iframe remains inert until tab becomes visible");
