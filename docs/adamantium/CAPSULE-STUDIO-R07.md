@@ -29,6 +29,7 @@ The native SVG draft lens provides:
 - test/adamantium/capsule-native-layout.test.mjs — geometry, cardinal sides, stable tag uniqueness, overflow, nested navigation, bounds.
 - test/adamantium/capsule-native-canvas.test.mjs — isolated fake native SVG DOM, port hit testing, direct SVG connection edits, drag, extract, navigation, storage sync, model isolation and untrusted storage failure.
 - test/adamantium/capsule-browser-fixture.html and capsule-browser-smoke.mjs — isolated real Chromium browser acceptance on a native SVG event-layer fixture; checks cardinal port geometry, typed click wiring, nested navigation, storage and original Node-RED node sentinel preservation.
+- test/adamantium/capsule-node-red-editor-cdp.mjs — reproducible Chrome DevTools acceptance against a **real isolated Node-RED 5 editor**. Requires explicit loopback editor/debug endpoints and safe-mode confirmation, and refuses a nonempty flow registry.
 - .github/workflows/capsule-studio-r07.yml — cross-platform Node.js 22/24 full suite with actual pinned C++ G0 build; Ubuntu additionally requires real Chrome/Chromium smoke.
 
 ## Safety and important limitations
@@ -52,6 +53,32 @@ Isolated Linux sparse checkout with SHA256-verified official Node.js binaries an
 - Chromium v156.0.8078.79 extracted into a temporary Linux test directory; `ADAMANTIUM_CHROMIUM_BIN=/absolute/path/chromium node test/adamantium/capsule-browser-smoke.mjs` printed **CAPSULE_NATIVE_BROWSER_OK**. No system browser install, no Windows desktop session or production flow changes.
 
 These include the actual C++17 native G0 acceptance in R06 and the signed durable R05 review inbox. CI results for Windows/Linux R07 must be verified separately after workflow execution.
+
+## Additional Windows / JediControl proof (20 November 2026)
+
+After the owner repaired JediControl's watchdog, the authorized VM125 relay reported desktop-01 **online**, 193 JPEG frames, shell/input/write capabilities true, emergency_status=idle, and all broker/MCP/Caddy services active. This proves reachability at the time of the check, **not** a tested watchdog crash/restart cycle.
+
+On Windows (DESKTOP-PUHG2PP), R07 was cloned into a disposable TEMP directory. We reused the installed Node-RED **5.0.10** executable but created a separate userDir, copied only the packaged Capsule editor plugin, and initialized an empty flow registry []. Node-RED bound exclusively to **127.0.0.1:18978** and its log confirmed **safe mode; flows stopped**. Existing user flows and the active editor were not modified.
+
+A separate Chrome **157.0.8103.78** headless profile exposed CDP only on **127.0.0.1:18979**. In the genuine Node-RED editor the test invoked the registered action adamantium:toggle-native-canvas, and verified:
+
+- The real event-layer element existed and the packaged JavaScript resources responded HTTP 200.
+- The Capsule SVG mounted inside the native event layer with **2 cards, 4 typed ports and one wire**, with runtime disabled and authority none.
+- Toggling again removed the layer cleanly, leaving the native flow node count at zero.
+- The Windows Node.js **26.1.0** suite found **83 tests: 78 passed, 5 skipped, 0 failed**. The skipped tests required an independent compiled native G0 binary, which was not supplied in this supplementary Windows run; the earlier full Linux Node22/24 run passed all 83.
+
+Both temporary listeners (18978 Node-RED and 18979 Chrome CDP) were stopped and confirmed absent. The user's watchdog, active Windows session and production flows were unchanged.
+
+The acceptance script is test/adamantium/capsule-node-red-editor-cdp.mjs. It requires explicit local target URLs, an operator confirmation flag, and an **empty** flow registry. After starting a disposable safe-mode Node-RED with no flows and an isolated Chrome debugging session, run on Windows PowerShell:
+
+~~~powershell
+$env:ADAMANTIUM_R07_DISPOSABLE_SAFE_MODE = "1"
+$env:ADAMANTIUM_R07_TEST_EDITOR_URL = "http://127.0.0.1:18978/"
+$env:ADAMANTIUM_R07_TEST_CDP_URL = "http://127.0.0.1:18979/"
+node test/adamantium/capsule-node-red-editor-cdp.mjs
+~~~
+
+R07 is still a non-executable **native SVG overlay**, not a first-class Node-RED flow/runtime node. This real-editor acceptance does **not** prove all zoom/drag interactions, MAS Core permissions, authoritative graph promotion or production hot swap. Do not auto-merge or deploy.
 
 ## Next R08 gates
 
