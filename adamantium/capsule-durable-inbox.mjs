@@ -160,7 +160,11 @@ export class DurableCapsuleProposalInbox {
     }
   }
   #serialize(callback){
-    const work=this.#tail.then(callback);
+    if(!this.#lock)return Promise.reject(new Error("Capsule inbox: closed"));
+    const work=this.#tail.then(()=>{
+      insist(!!this.#lock,"closed inbox cannot accept new mutations");
+      return callback();
+    });
     this.#tail=work.catch(()=>{});
     return work;
   }
@@ -275,6 +279,7 @@ export class DurableCapsuleProposalInbox {
       const stillAuthorized=await this.#identity(context,CONTRACT);
       insist(stillAuthorized===principalId,"transport principal changed during validation");
       const now=this.#now();
+      insist(Number.isSafeInteger(now)&&now>=0,"invalid receipt timestamp");
       const status=result.accepted?"accepted-for-review":"rejected";
       const receipt={
         format:RECEIPT_VERSION,nodeId:this.#node,graphId:this.#state.graphId,
