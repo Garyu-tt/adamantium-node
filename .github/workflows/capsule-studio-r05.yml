@@ -1,0 +1,34 @@
+name: Adamantium Capsule Studio R05 (durable signed inbox)
+on:
+  push:
+    branches: ["feature/capsules-durable-inbox-r05"]
+  pull_request:
+    paths:
+      - "adamantium/capsule-**"
+      - "test/adamantium/capsule-**"
+      - ".github/workflows/capsule-studio-r05.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  durable-inbox-and-regressions:
+    runs-on: ${dollar}{{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ["22", "24"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${dollar}{{ matrix.node }}
+      - name: Check JS syntax
+        shell: bash
+        run: |
+          node --check adamantium/capsule-durable-inbox.mjs
+          node --check adamantium/capsule-inbox-http.mjs
+          node --check adamantium/capsule-signed-proposal-bridge.mjs
+          node --check adamantium/capsule-ir-proposal.mjs
+      - name: Pure contracts, signed durable snapshots, localhost HTTP and full regression
+        run: node --test test/adamantium/capsule-*.test.mjs
