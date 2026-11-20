@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {spawn} from "node:child_process";
 import {fileURLToPath} from "node:url";
+import {readFile} from "node:fs/promises";
 
 test("Capsule Studio preview serves only static editor assets on loopback",async()=>{
   const program=fileURLToPath(new URL("../../adamantium/capsule-preview-server.mjs",import.meta.url));
@@ -43,4 +44,15 @@ test("Capsule Studio preview serves only static editor assets on loopback",async
   } finally {
     child.kill();
   }
+});
+
+test("Capsule R05 workspace is nonzero-height and exposes Construct plus IR controls",async()=>{
+  const file=fileURLToPath(new URL("../../adamantium/capsule-preview/index.html",import.meta.url));
+  const html=await readFile(file,"utf8");
+  assert.match(html,/Capsule Studio R05/);
+  // Without flex sizing the absolutely positioned #canvas has height 0.
+  assert.match(html,/#workspace\\s*\\{[^}]*flex:\\s*1 1 auto;[^}]*min-height:\\s*0;/);
+  assert.match(html,/#canvas\\s*\\{position:absolute;inset:0;overflow:auto/);
+  assert.match(html,/id="constructMenuToggle"/);
+  assert.match(html,/id="exportIR"/);
 });
