@@ -27,3 +27,7 @@ Expected example: initial 896 active V1 cells, preview a new 1024-cell V1 phenot
 ## Future work
 
 To perform genuine live growth, implement stable neuron UUID and synapse IDs across revisions, atomic neural-state + synaptic-weight migration for each independent region, queue drain/suspend, typed bridge remapping, reversible state conversion, zero-loss proof and full rollback checkpoints. Do not remove the tick-boundary safety rule until those tests exist. In the meantime, the existing R04 acquired-genome store remains the canonical exact learned-weights record for a fixed topology.
+
+## Measured learned-state loss (mature circuit, 120 synthetic ticks)
+
+When the R03 896-cell V1 circuit has already run, its three regions contain **591 changed synapses**. Recompiling a 1024-cell V1 shadow circuit would leave **320 of those learned synapses without an identical structural address**. The R05 planner reports this explicitly and denies commit, preserving the old checkpoint byte-for-byte. These are synthetic STDP-like weights, not measured biological memories. This finding is a concrete engineering blocker for real live neurogenesis until a proven migration protocol exists.
