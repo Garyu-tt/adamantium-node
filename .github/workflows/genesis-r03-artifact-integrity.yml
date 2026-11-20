@@ -1,0 +1,35 @@
+name: GENESIS R03 Artifact Integrity
+on:
+  pull_request:
+    paths:
+      - 'experiments/genesis/r03-runtime.zip.b64'
+      - 'experiments/genesis/r03-circuit.test.cjs'
+      - 'experiments/genesis/r03-handoff-manifest.json'
+      - '.github/workflows/genesis-r03-artifact-integrity.yml'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifest, Base64 artifact, ZIP entries, SHA-256 and test source
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, io, json, pathlib, zipfile
+          root=pathlib.Path('experiments/genesis')
+          m=json.loads((root/'r03-handoff-manifest.json').read_text())
+          assert m['schema']=='mechanicus.genesis-artifact-handoff/2'
+          encoded=(root/'r03-runtime.zip.b64').read_text().strip()
+          b=base64.b64decode(encoded, validate=True)
+          assert len(b)==m['source']['archive_bytes']
+          assert hashlib.sha256(b).hexdigest()==m['source']['sha256']
+          with zipfile.ZipFile(io.BytesIO(b)) as z:
+              names=[n.filename for n in z.infolist() if not n.is_dir()]
+              assert sorted(names)==sorted(m['extracted_file_allowlist'])
+              assert len(names)==len(set(names))
+              assert all(not n.startswith('/') and '..' not in n.split('/') and '\\' not in n for n in names)
+          test=(root/'r03-circuit.test.cjs').read_bytes()
+          assert hashlib.sha256(test).hexdigest()==m['tests']['sha256']
+          assert m['tests']['expected_count']==15
+          print('R03 artifact and test integrity: verified, NO runtime executed')
+          PY
