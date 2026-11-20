@@ -1,6 +1,7 @@
 import {CapsuleStudio,SIDES} from "../capsule-studio.mjs";
 import {extractSelection,CapsuleTemplateLibrary} from "../capsule-extract.mjs";
 import {createCapsuleIRProposal,inspectCapsuleIRProposal} from "../capsule-ir-proposal.mjs";
+import {projectNativeCanvas} from "../capsule-native-canvas.mjs";
 
 // Offline authoring preview only: no eval(), worker, process spawn or deployment.
 const STORAGE="adamantium.capsule-studio.r01";
@@ -434,6 +435,16 @@ function renderBreadcrumbs() {
     root.append(button(crumb.title,()=>goTo(crumb.id)));
   }
 }
+function publishNativeCanvas() {
+  if(window.parent===window)return;
+  try {
+    const projection=projectNativeCanvas(studio,{graphId:activeGraph,positions});
+    window.parent.postMessage({
+      type:"adamantium:native-canvas-projection/1",
+      projection
+    },window.location.origin);
+  }catch(error){message("Native SVG lens: "+error.message,true);}
+}
 function render() {
   renderPalette();renderBreadcrumbs();renderPortals();
   const graph=studio.graph(activeGraph);
@@ -442,7 +453,43 @@ function render() {
   $("saveTemplate").disabled=!graph.parent;
   $("graphInfo").textContent=graph.instances.length+" нод · "+graph.edges.length+" соединений · "+graph.boundary.length+" внешних портов";
   renderWires();
+  publishNativeCanvas();
 }
+// The native canvas is a DISPLAY LENS. All edit intents return to the
+// separate Capsule Studio authoring model and pass its typed validation.
+window.addEventListener("message",event=>{
+  if(window.parent===window||event.source!==window.parent||
+    event.origin!==window.location.origin)return;
+  const request=event.data;
+  if(!request||typeof request!=="object")return;
+  if(request.type==="adamantium:native-canvas-refresh/1"){
+    publishNativeCanvas();return;
+  }
+  if(request.type!=="adamantium:native-canvas-intent/1")return;
+  if(request.graphId!==activeGraph){message("Граф изменился; операция отменена.",true);return;}
+  if(request.action==="enter"){
+    const instance=studio.instance(activeGraph,request.nodeId);
+    if(instance.kind!=="capsule"||instance.childGraphId!==request.childGraphId)return;
+    enter(request.nodeId);return;
+  }
+  if(request.action==="move"){
+    if(!Number.isSafeInteger(request.x)||!Number.isSafeInteger(request.y)||
+      request.x<0||request.y<0||request.x>4000||request.y>4000)return;
+    doAction(()=>{
+      studio.instance(activeGraph,request.nodeId);
+      positions[activeGraph]??={};
+      positions[activeGraph][request.nodeId]={x:request.x,y:request.y};
+      message("Координаты карточки синхронизированы с основным canvas.");
+    });return;
+  }
+  if(request.action==="connect"){
+    doAction(()=>{
+      studio.connect(activeGraph,{fromId:request.fromId,fromTag:request.fromTag,
+        toId:request.toId,toTag:request.toTag});
+      message("Создана типизированная связь из основного SVG canvas.");
+    });
+  }
+});
 $("definitionForm").addEventListener("submit",addDefinition);
 $("cancelDefinition").addEventListener("click",()=>$("definitionDialog").close());
 $("exposeForm").addEventListener("submit",submitExposure);
