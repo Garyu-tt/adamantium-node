@@ -1,0 +1,34 @@
+name: Adamantium Capsule Studio R01 (offline)
+on:
+  pull_request:
+    paths:
+      - "adamantium/capsule-**"
+      - "adamantium/capsule-preview/**"
+      - "test/adamantium/capsule-**"
+      - ".github/workflows/capsule-studio-r01.yml"
+  push:
+    branches:
+      - "feature/capsules-microprogram-palette-r01"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capsule-model-and-preview:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ["22", "24"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Check source syntax
+        run: |
+          node --check adamantium/capsule-studio.mjs
+          node --check adamantium/capsule-preview/app.mjs
+          node --check adamantium/capsule-preview-server.mjs
+      - name: Pure graph contracts + localhost HTTP preview tests
+        run: node --test test/adamantium/capsule-studio.test.mjs test/adamantium/capsule-preview.test.mjs
