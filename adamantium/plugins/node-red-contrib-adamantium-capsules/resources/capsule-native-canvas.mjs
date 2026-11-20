@@ -91,6 +91,7 @@ export class CapsuleNativeCanvas {
     this.expandedSides=Object.create(null);
     this.dirty=true;this.layers=null;this.notice="Без исполнения · локальный слой";
     this.storageLocked=false;
+    this.storageHead=null; // last observed exact bytes, not authoritative CAS
     this.drag=null;
     this.read();
   }
@@ -99,6 +100,7 @@ export class CapsuleNativeCanvas {
     this.storageLocked=false;
     try{
       const text=this.storage.getItem(STORAGE_KEY);
+      this.storageHead=text;
       if(text){
         const json=JSON.parse(text);
         const studio=CapsuleStudio.restore(json.model);
@@ -126,7 +128,16 @@ export class CapsuleNativeCanvas {
     }
     try {
       const state={model:this.studio.snapshot(),templates:this.library.snapshot(),positions:this.positions};
-      this.storage.setItem(STORAGE_KEY,JSON.stringify(state));
+      // Fail closed when another tab/iframe saved after our last successful
+      // read/write. localStorage itself offers NO atomic multi-tab CAS; this
+      // protects against common stale writers, not a simultaneous write race.
+      if(this.storage.getItem(STORAGE_KEY)!==this.storageHead){
+        this.notice="Граф изменён во внешнем редакторе: обнови актуальную версию перед записью.";
+        return false;
+      }
+      const encoded=JSON.stringify(state);
+      this.storage.setItem(STORAGE_KEY,encoded);
+      this.storageHead=encoded;
       // A nonessential UI notifier must not turn a successful disk/browser
       // write into a reported persistence failure.
       try {
@@ -158,7 +169,7 @@ export class CapsuleNativeCanvas {
     let result=null;
     try{
       result=operation();
-      if(!this.save())throw new Error("browser storage write rejected");
+      if(!this.save())throw new Error(this.notice||"browser storage write rejected");
     }catch(error){
       this.studio=CapsuleStudio.restore(checkpoint.model);
       this.library=CapsuleTemplateLibrary.restore(checkpoint.library);
