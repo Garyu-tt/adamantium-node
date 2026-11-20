@@ -35,3 +35,14 @@
 The isolated Node.js matrix (Windows/Ubuntu, Node 22/24) tests opt-in, event replay, ownership, quotas, fail-closed invalid types, cleanup, non-recursive construction. The browser smoke must verify adding an external native inject node triggers exactly one approved catch+debug assembly and deleting the untouched source removes only its owned pair. R02 stamps, Undo/Redo, snapshot copies, auto-tab and locked flow tests remain mandatory.
 
 Production live-update and Mesh construction logistics are **NOT implemented in R03**. They require reviewed MAS Graph Manager capability, single-writer serialization/rollback, event authorization and signed IR transactions; no implicit installation on VM122.
+
+## Verified test evidence — 2026-11-20
+
+- Native Reactor R03 matrix: 4/4 jobs green (Windows + Linux, Node.js 22 + 24).
+- Native Construct R02 regression matrix: 4/4 jobs green.
+- Disposable Node-RED 5.0.10 safe mode + headless Chromium acceptance passed. Real UI: the R03 rules panel was enabled explicitly, a manually inserted Inject node triggered a pair of Catch + Debug nodes, exactly **one** assembly appeared, and deleting the original trigger removed only the two untouched rule-owned nodes.
+- Browser acceptance also covers R02 native Q menu, four stamped assemblies (eight nodes), undo/redo, selected snapshot reuse, auto-new-tab, locked Flow rejection and registry event refresh.
+- Observed browser result: NATIVE_Q_SMOKE_OK stamped=8 saved_clone=2 auto_new_tab=2 reactive_add_cleanup=true locked_guard=true builtins=3.
+- A failure discovered during browser testing was fixed: numeric-leading Node-RED hexadecimal IDs are now valid event graph/node identifiers. Independent regression test added.
+
+This acceptance is isolated editor QA, not authorization for VM122 production installation or universal Graph Manager hot swap. PR remains draft until independent review.
