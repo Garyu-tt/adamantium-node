@@ -69,7 +69,7 @@ export function mountNativeCapsuleWorkspace({
   layer.setAttribute("role","group");
   layer.setAttribute("aria-label","Capsule Studio draft graph on native Node-RED SVG canvas");
   stage.appendChild(layer);
-  let snapshot,model,positions,templates,activeGraph,selectedPort=null;
+  let snapshot,model,positions,templates,activeGraph,selectedPort=null,lastStorageRaw=null;
   const expanded=new Set(),selected=new Set();
   let status="Черновик: изменения не передаются в исполняемые flow Node-RED.";
   let closed=false,drag=null;
@@ -98,43 +98,65 @@ export function mountNativeCapsuleWorkspace({
   function load(preserve=true){
     const previous=activeGraph;
     try{
-      const data=JSON.parse(storage.getItem(STORAGE));
+      const raw=storage.getItem(STORAGE);
+      const data=JSON.parse(raw);
       if(!data||typeof data!=="object")throw new TypeError("missing persisted draft");
       const restored=CapsuleStudio.restore(data.model);
       model=restored;positions=sanePositionMap(data.positions,restored);
       templates=data.templates;
       snapshot=data;
+      lastStorageRaw=raw;
     }catch(error){
       if(model && preserve){notify("Не удалось прочитать обновление: "+error.message,true);return;}
       const initial=starter();
       model=initial.model;positions=initial.positions;templates=initial.templates;
+      // An invalid existing document must not be overwritten by the demo.
+      lastStorageRaw=null;
       notify("Создан локальный демонстрационный граф; он пока не сохранён.");
     }
     activeGraph=preserve&&previous&&model.graphs[previous]?previous:model.rootGraphId;
     selected.clear();selectedPort=null;
   }
   function persist(){
+    // Best-effort cross-tab optimistic check. localStorage has no atomic CAS;
+    // authoritative shared graph edits must go through Graph Manager.
+    const liveRaw=storage.getItem(STORAGE);
+    if(liveRaw!==lastStorageRaw)
+      throw new Error("Черновик обновлён в другой вкладке; нажми Reload");
     const data={model:model.snapshot(),positions};
     if(templates!==undefined)data.templates=templates;
-    storage.setItem(STORAGE,JSON.stringify(data));
+    const nextRaw=JSON.stringify(data);
+    storage.setItem(STORAGE,nextRaw);
+    lastStorageRaw=nextRaw;
     snapshot=data;
   }
   function transact(operation,message){
     if(closed)throw new Error("Capsule workspace closed");
     const beforeModel=model.snapshot();
     const beforePositions=JSON.parse(JSON.stringify(positions));
+    const beforeTemplates=templates===undefined?undefined:JSON.parse(JSON.stringify(templates));
+    const beforeGraph=activeGraph,beforeSelected=[...selected];
+    const beforePort=selectedPort&&{...selectedPort};
+    const beforeSnapshot=snapshot,beforeRaw=lastStorageRaw;
+    let result;
     try{
-      const result=operation();
+      result=operation();
       // Fail closed against invalid editor manipulations before saving.
       CapsuleStudio.restore(model.snapshot());
       persist();
-      if(message)notify(message);
-      render();
-      return result;
     }catch(error){
-      model=CapsuleStudio.restore(beforeModel);positions=beforePositions;
+      model=CapsuleStudio.restore(beforeModel);
+      positions=beforePositions;templates=beforeTemplates;
+      activeGraph=beforeGraph;selected.clear();
+      for(const id of beforeSelected)selected.add(id);
+      selectedPort=beforePort;snapshot=beforeSnapshot;lastStorageRaw=beforeRaw;
       notify(error.message,true);render();return null;
     }
+    // Notification/render errors after a successful save must not roll back
+    // the in-memory model while the persisted document already changed.
+    if(message)notify(message);
+    render();
+    return result;
   }
   function chooseGraph(id){
     try{model.graph(id);activeGraph=id;selected.clear();selectedPort=null;render();}
@@ -195,9 +217,18 @@ export function mountNativeCapsuleWorkspace({
   }
   function pointerEnd(){
     if(!drag)return;
-    drag=null;
-    try{persist();notify("Положение ноды сохранено локально.");render();}
-    catch(err){notify(err.message,true);render();}
+    const finished=drag;drag=null;
+    try{
+      persist();notify("Положение ноды сохранено локально.");
+    }catch(err){
+      // Undo optimistic movement on storage quota/stale version refusal.
+      positions[finished.graphId]??={};
+      if(finished.hadPosition)
+        positions[finished.graphId][finished.id]=finished.previousPosition;
+      else delete positions[finished.graphId][finished.id];
+      notify(err.message,true);
+    }
+    render();
   }
   function attachDrag(header,node){
     header.addEventListener("pointerdown",event=>{
@@ -209,8 +240,11 @@ export function mountNativeCapsuleWorkspace({
       }
       event.preventDefault();
       positions[activeGraph]??={};
+      const hadPosition=Object.prototype.hasOwnProperty.call(positions[activeGraph],node.id);
       const p=positions[activeGraph][node.id]||{x:node.x,y:node.y};
-      drag={id:node.id,graphId:activeGraph,origin:pointerPoint(event),start:{x:p.x,y:p.y}};
+      drag={id:node.id,graphId:activeGraph,origin:pointerPoint(event),
+        start:{x:p.x,y:p.y},hadPosition,
+        previousPosition:hadPosition?{x:p.x,y:p.y}:null};
     });
     if(node.kind==="capsule"){
       header.addEventListener("dblclick",event=>{
@@ -387,7 +421,11 @@ export function mountNativeCapsuleWorkspace({
     layer.setAttribute("data-edge-count",String(layout.edges.length));
   }
   function storageChanged(event){
-    if(event.key===STORAGE){load();render();}
+    if(event.key===STORAGE){
+      // Discard an uncommitted drag when a separate document changes the draft.
+      drag=null;
+      load();render();
+    }
   }
   function swallow(event){
     // Do not send native Node-RED canvas mouse events through the draft lens.
