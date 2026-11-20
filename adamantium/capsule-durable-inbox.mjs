@@ -10,11 +10,31 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {constants as fsConstants} from "node:fs";
-import {createHash,createPrivateKey,randomBytes,sign} from "node:crypto";
+import {createHash,createPrivateKey,createPublicKey,randomBytes,sign,verify} from "node:crypto";
 import {inspectCapsuleIRProposal} from "./capsule-ir-proposal.mjs";
-import {signedPayloadBytes,OFFER_VERSION,RECEIPT_VERSION,REQUEST_VERSION} from "./capsule-signed-proposal-bridge.mjs";
+import {signedPayloadBytes,canonicalJSONString,OFFER_VERSION,RECEIPT_VERSION,REQUEST_VERSION} from "./capsule-signed-proposal-bridge.mjs";
 
 export const INBOX_VERSION="adamantium.core-graph-inbox/1";
+export const SNAPSHOT_VERSION="adamantium.core-graph-inbox-signed-snapshot/1";
+function snapshotBytes(state){
+  return Buffer.from("ADAMANTIUM-GRAPH-INBOX-SNAPSHOT-R05\n"+canonicalJSONString(state),"utf8");
+}
+function sealSnapshot(state,key){
+  return {format:SNAPSHOT_VERSION,state,
+    signature:sign(null,snapshotBytes(state),key).toString("base64")};
+}
+function openSnapshot(snapshot,key){
+  exact(snapshot,["format","state","signature"],"signed snapshot");
+  insist(snapshot.format===SNAPSHOT_VERSION,"unsupported signed snapshot format");
+  insist(typeof snapshot.signature==="string" &&
+    /^[A-Za-z0-9+/]+={0,2}$/.test(snapshot.signature),"invalid snapshot signature encoding");
+  const signature=Buffer.from(snapshot.signature,"base64");
+  insist(signature.length===64&&signature.toString("base64")===snapshot.signature,
+    "invalid snapshot signature bytes");
+  insist(verify(null,snapshotBytes(snapshot.state),createPublicKey(key),signature),
+    "invalid snapshot signature");
+  return snapshot.state;
+}
 const CONTRACT="mechanicus.graph.propose/1";
 const ID=/^[a-z][a-z0-9_.-]{0,127}$/;
 const SHA=/^[a-f0-9]{64}$/;
@@ -58,10 +78,10 @@ function verifyStored(state) {
   insist(Array.isArray(state.queue)&&state.queue.length<=512,"invalid review queue");
   verifyAudit(state);
 }
-async function saveAtomic(dir,state){
+async function saveAtomic(dir,state,privateKey){
   const target=path.join(dir,"inbox.json");
   const tmp=path.join(dir,".inbox-"+randomBytes(12).toString("hex")+".tmp");
-  const text=JSON.stringify(state)+"\n";
+  const text=JSON.stringify(sealSnapshot(state,privateKey))+"\n";
   insist(text.length<=24_000_000,"state snapshot exceeds 24 MB budget");
   let file;
   try{
@@ -120,7 +140,7 @@ export class DurableCapsuleProposalInbox {
       const file=path.join(d,"inbox.json");
       let state;
       try {
-        state=JSON.parse(await fs.readFile(file,"utf8"));
+        state=openSnapshot(JSON.parse(await fs.readFile(file,"utf8")),privateKey);
       }catch(error){
         if(error.code!=="ENOENT")throw error;
         insist(baseline,"new inbox requires explicit verified baseline");
@@ -128,7 +148,7 @@ export class DurableCapsuleProposalInbox {
         state={format:INBOX_VERSION,graphId:info.rootGraphId,
           revision:info.revision,current:clone(baseline),headSha256:hash(baseline),
           offers:{},requests:{},queue:[],audit:[]};
-        await saveAtomic(d,state);
+        await saveAtomic(d,state,privateKey);
       }
       verifyStored(state);
       return new DurableCapsuleProposalInbox({directory:d,lock,state,privateKey,
@@ -160,7 +180,7 @@ export class DurableCapsuleProposalInbox {
   }
   async #commit(next){
     verifyStored(next);
-    await saveAtomic(this.#directory,next);
+    await saveAtomic(this.#directory,next,this.#key);
     this.#state=next;
   }
   summary(){
