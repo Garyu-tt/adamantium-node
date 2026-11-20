@@ -166,3 +166,16 @@ test("signed rejected proposal receipt remains rejected and never becomes a runt
   assert.equal(result.graphApproved,false);
   assert.equal(result.runtimeActivated,false);
 });
+
+test("forged offer signature and noncanonical signature bytes never reach invoke",async()=>{
+ const {proposal,getStats,bridge}=fixtures({
+  preflight:{signedOffer:{payload:{format:OFFER_VERSION},signature:Buffer.alloc(64,1).toString("base64")}}
+ });
+ await assert.rejects(bridge.submit({requestId:"forge_1",proposal}),/invalid Ed25519 signature/);
+ assert.equal(getStats().invokes,0);
+ const alt=fixtures({
+  preflight:{signedOffer:{payload:{format:OFFER_VERSION},signature:"not_base64!!!"}}
+ });
+ await assert.rejects(alt.bridge.submit({requestId:"forge_2",proposal:alt.proposal}),/invalid signature encoding/);
+ assert.equal(alt.getStats().invokes,0);
+});
