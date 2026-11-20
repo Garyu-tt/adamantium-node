@@ -1,0 +1,15 @@
+{
+  "name": "@mechanicus/genesis-neural-circuit-r03",
+  "version": "0.3.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "description": "CPU-first deterministic three-region synthetic sensory experiment; no sensor hardware or server",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.cjs",
+    "demo": "node cli.cjs demo --steps 120 --pattern moving-bar --seed 42"
+  }
+}
