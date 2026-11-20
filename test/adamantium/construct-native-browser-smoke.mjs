@@ -69,7 +69,7 @@ try {
   const status=await page.locator("#ada-native-status").innerText();
   assert.match(status,/элементов/);
   await page.locator("#ada-native-cards .adamantium-construct-card").first().locator("button").click();
-  await page.waitForSelector("#adamantium-construct-native-overlay[hidden]",{timeout:15000});
+  await page.waitForFunction(()=>document.getElementById("adamantium-construct-native-overlay")?.hidden===true,null,{timeout:15000});
   await page.mouse.move(800,450);
   await page.mouse.click(800,450);
   await page.waitForFunction(()=>{
