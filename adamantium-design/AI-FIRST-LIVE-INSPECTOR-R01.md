@@ -7,7 +7,7 @@ Status: **read-only isolated utility**, separately tested against VM122 on 2026-
 Allow AI agents and owner operators to observe the *actual* Node-RED Admin v2 graph revision without scraping the GUI or receiving the full flow JSON, node source, payloads, credentials or secrets.
 
 - **inspect** outputs revision + a strict projection of tabs, node identities, types, names and outbound-edge counts.
-- **watch** polls 1–20 times and emits revision changes as metadata-only diffs; it never deploys or modifies anything.
+- **watch** polls 1–20 times and emits revision changes as topology/metadata-only diffs; it never deploys or modifies anything.
 - Restricts endpoints to exact explicit localhost/127.0.0.1/::1 origins and GET /flows only.
 - Denies missing auth tokens by default. Lab mode --unauthenticated-lab requires explicit operator opt-in and still only accepts a loopback origin.
 - Accepts a scoped bearer token exclusively through ADAMANTIUM_NODE_ACCESS_TOKEN environment variable; never print or persist it.
@@ -26,7 +26,7 @@ node adamantium/ai-graph-inspect.mjs watch --url http://127.0.0.1:1885/ --unauth
 
 ## Validation and observed facts
 
-- node --test test/adamantium/ai-graph-inspect.test.mjs: 8/8 passed using Node 24.22.3 on VM122.
+- node --test test/adamantium/ai-graph-inspect.test.mjs: 9/9 passed using Node 24.22.3 on VM122.
 - Against the actual VM122 127.0.0.1:1885: observed Node-RED Admin API v2 revision 4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945, 0 tabs, 0 nodes, repeated stable revision under bounded watch.
 - VM122 service and Capsule Studio are **separate**; nothing in these tools loads runtime plugins or edits Node-RED.
 - Read-only graph.inspect is a useful interim bridge, not the desired signed MAS adamantium_nodes / capabilities / invoke API.
