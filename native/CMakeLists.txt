@@ -12,6 +12,7 @@ if(NOT EXISTS "${MAS_G0_ROOT}/include/mas/universal_graph.hpp" OR
    NOT EXISTS "${MAS_G0_ROOT}/src/universal_graph.cpp")
   message(FATAL_ERROR "Invalid canonical G0 source root")
 endif()
+enable_testing()
 add_subdirectory("${MAS_G0_ROOT}" "${CMAKE_CURRENT_BINARY_DIR}/toolbox-g0")
 add_executable(capsule_g0_validator capsule-g0-bridge.cpp)
 target_link_libraries(capsule_g0_validator PRIVATE mas_universal_graph)
