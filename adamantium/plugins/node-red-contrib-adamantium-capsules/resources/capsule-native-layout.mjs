@@ -7,7 +7,7 @@ import {SIDES} from "./capsule-studio.mjs";
 const VALID=new Set(SIDES);
 const DEFAULT_LIMIT=4;
 const SIZE_LIMIT=1200;
-const clamp=(n,a,b)=>Math.min(b,Math.max(a,Number.isFinite(n)?n:a));
+const clamp=(n,a,b)=>Math.min(b,Math.max(a,Number.isNaN(n)?a:n));
 function check(ok,msg){if(!ok)throw new TypeError("Capsule native layout: "+msg);}
 function asPoint(raw,index){
   const fallback={x:160+(index%4)*370,y:180+Math.floor(index/4)*240};
