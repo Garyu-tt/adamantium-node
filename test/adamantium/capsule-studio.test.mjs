@@ -32,8 +32,8 @@ test("tagged edges enforce direction, semantics and exact data contract",()=>{
 test("four boundary cards, independently exposed channels and overflow grouping",()=>{
   const {s,root,processor}=fixture();
   const c=s.createCapsule(root,"Nested");
-  const node=s.place(c.graphId,processor.id);
   for(let i=0;i<6;i++) {
+    const node=s.place(c.graphId,processor.id);
     const side=SIDES[i%4];
     const tag=s.expose(c.graphId,{side,instanceId:node,tag:i%2?"result":"data",externalTag:"channel"+i});
     assert.equal(tag,"channel"+i);
