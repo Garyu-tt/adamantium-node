@@ -179,7 +179,11 @@ export class DurableCapsuleProposalInbox {
       const now=this.#now();
       insist(Number.isSafeInteger(now)&&now>=0,"invalid timestamp");
       const next=clone(this.#state);
-      // Refuse overflow; no silently disappearing offers during review.
+      // Expired offers are never valid. Idempotent receipts live in the
+      // independent request ledger and remain available after offer GC.
+      for(const [id,entry] of Object.entries(next.offers)){
+        if(entry.expiresAt<=now)delete next.offers[id];
+      }
       insist(Object.keys(next.offers).length<512,"offer registry at capacity");
       const offerId="offer_"+randomBytes(16).toString("hex");
       const actionId="propose_"+randomBytes(12).toString("hex");
@@ -218,7 +222,8 @@ export class DurableCapsuleProposalInbox {
       insist(info.rootGraphId===this.#state.graphId &&
         info.revision===p.proposedRevision,"proposal graph mismatch");
       insist(hash(p.proposal)===p.proposalSha256,"proposal SHA256 mismatch");
-      const requestKey=principalId+"."+p.requestId;
+      // Tuple encoding avoids principal/request collisions when IDs contain dots.
+      const requestKey=JSON.stringify([principalId,p.requestId]);
       const requestHash=hash({query,principalId});
       const existing=this.#state.requests[requestKey];
       if(existing){
@@ -245,6 +250,10 @@ export class DurableCapsuleProposalInbox {
       const graphsHash=hash(p.proposal.graphs);
       insist(object(result)&&typeof result.accepted==="boolean" &&
         result.graphsSha256===graphsHash,"native validation contract mismatch");
+      // Policy and leadership can change while native validation is running.
+      // Re-authenticate immediately before the durable acceptance boundary.
+      const stillAuthorized=await this.#identity(context,CONTRACT);
+      insist(stillAuthorized===principalId,"transport principal changed during validation");
       const now=this.#now();
       const status=result.accepted?"accepted-for-review":"rejected";
       const receipt={
