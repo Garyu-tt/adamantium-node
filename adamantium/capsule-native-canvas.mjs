@@ -77,13 +77,15 @@ function sanitizedPositions(studio,positions) {
  * Native node coordinates and existing flow links are never modified.
  */
 export class CapsuleNativeCanvas {
-  constructor({doc,storage,onUpdate,requestRedraw}={}){
+  constructor({doc,storage,onUpdate,requestRedraw,getWorkspaceId}={}){
     if(!doc||typeof doc.createElementNS!=="function")
       throw new TypeError("SVG DOM required");
     if(!storage||typeof storage.getItem!=="function"||typeof storage.setItem!=="function")
       throw new TypeError("local-only storage required");
     this.doc=doc;this.storage=storage;this.onUpdate=onUpdate||(()=>{});
     this.requestRedraw=requestRedraw||(()=>{});
+    this.getWorkspaceId=typeof getWorkspaceId==="function"?getWorkspaceId:null;
+    this.workspaceId=null;
     this.enabled=false;this.studio=null;this.library=null;this.positions={};
     this.graphId=null;this.activePort=null;this.selected=new Set();
     this.expandedSides=Object.create(null);
@@ -134,6 +136,7 @@ export class CapsuleNativeCanvas {
   }
   setEnabled(value) {
     this.enabled=value===true;
+    if(this.enabled&&this.getWorkspaceId)this.workspaceId=this.getWorkspaceId();
     this.dirty=true;
     this.requestRedraw();
   }
@@ -415,9 +418,18 @@ export class CapsuleNativeCanvas {
     }
     this.dirty=false;
   }
-  redraw({nodeLayer,linkLayer}={}){
+  redraw({nodeLayer,linkLayer,workspaceId}={}){
     if(!nodeLayer||!linkLayer)return;
     this.layers={nodeLayer,linkLayer};
+    // The editor-only lens belongs to the selected native workspace,
+    // never every Node-RED flow tab simultaneously.
+    if(this.enabled&&this.workspaceId!==null&&workspaceId!==undefined&&
+      this.workspaceId!==workspaceId){
+      childOf(nodeLayer,"adamantium-capsule-native-overlay")?.remove();
+      childOf(linkLayer,"adamantium-capsule-native-wires")?.remove();
+      this.dirty=true;
+      return;
+    }
     this.render();
   }
 }
