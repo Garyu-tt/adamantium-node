@@ -54,7 +54,7 @@ const find=(root,predicate)=>{
   scan(root);return result;
 };
 const cls=(root,name)=>find(root,n=>n.getAttribute("class")?.split(" ").includes(name));
-function fixture(raw){
+function fixture(raw,{workspaceId=null}={}){
   const document=new FakeDoc(),root=document.createElementNS(NS,"svg");
   const nodeLayer=document.createElementNS(NS,"g"),linkLayer=document.createElementNS(NS,"g");
   root.appendChild(linkLayer);root.appendChild(nodeLayer);
@@ -64,10 +64,14 @@ function fixture(raw){
     getItem:key=>backing.get(key)||null,
     setItem:(key,val)=>backing.set(key,val)
   };
-  let canvas,redraws=0;
-  const render=()=>{redraws++;canvas.redraw({nodeLayer,linkLayer});};
-  canvas=new CapsuleNativeCanvas({doc:document,storage,requestRedraw:render});
+  let canvas,redraws=0,activeWorkspaceId=workspaceId;
+  const render=()=>{
+    redraws++;canvas.redraw({nodeLayer,linkLayer,workspaceId:activeWorkspaceId});
+  };
+  canvas=new CapsuleNativeCanvas({doc:document,storage,requestRedraw:render,
+    getWorkspaceId:workspaceId===null?undefined:()=>activeWorkspaceId});
   return {document,nodeLayer,linkLayer,root,canvas,render,backing,
+    setWorkspace:(id)=>{activeWorkspaceId=id;render();},
     getRedraws:()=>redraws};
 }
 function makeModel({dataType="core.json@1"}={}){
@@ -185,4 +189,20 @@ test("R07 uses explicit hook in native view and plugin resources remain inert",a
  assert.match(nativeView,/RED\.hooks\.trigger\("viewRedrawCanvas"/);
  assert.match(hooks,/viewRedrawCanvas: true/);
  assert.doesNotMatch(nativeView,/viewRedrawCanvas[\s\S]{0,180}\/flows/);
+});
+
+test("SVG capsule lens remains bound to one native Node-RED workspace tab",()=>{
+ const f=fixture(null,{workspaceId:"workspace_a"});
+ f.canvas.setEnabled(true);
+ assert.equal(cls(f.nodeLayer,"adamantium-capsule-native-card").length,3);
+ f.setWorkspace("workspace_b");
+ assert.equal(cls(f.nodeLayer,"adamantium-capsule-native-card").length,0);
+ assert.equal(cls(f.linkLayer,"adamantium-capsule-native-wire").length,0);
+ assert.equal(f.canvas.isEnabled(),true,"state retained for original workspace");
+ f.setWorkspace("workspace_a");
+ assert.equal(cls(f.nodeLayer,"adamantium-capsule-native-card").length,3);
+ f.setWorkspace("workspace_b");
+ f.canvas.setEnabled(true);
+ assert.equal(cls(f.nodeLayer,"adamantium-capsule-native-card").length,3,
+   "explicitly activating SVG in the new tab rebinds the lens");
 });
