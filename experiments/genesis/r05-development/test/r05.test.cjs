@@ -30,3 +30,13 @@ test('pruning from 896 to 640 is real in fresh shadow and preserves source genom
 test('read-only status snapshot does not permit external mutation of history',()=>{const p=make(),r=p.stage(request(p));p.commit(r.sha256);const s=p.status();s.history[0].to='mutated';s.genome_hashes.V1='bad';assert.notEqual(p.status().history[0].to,'mutated');assert.notEqual(p.status().genome_hashes.V1,'bad');});
 test('planner requires real R03 circuit and rejects invalid input types',()=>{assert.throws(()=>new DevelopmentPlanner({}),/NeuralCircuit/);const p=make();for(const r of [null,[],12,'bad'])assert.throws(()=>p.stage(r),/stage request/);});
 test('queued region projection events make commit unavailable, even if tick reset maliciously',()=>{const p=make(),r=p.stage(request(p));p.circuit.queue.push({link:'LGN→V1',at:1,count:1,amp:2});assert.throws(()=>p.commit(r.sha256),/source state changed/);});
+test('mature learned tissue fails closed if 320 learned synapses would be lost by structural recompile',()=>{
+ const p=make();p.circuit.run(120);const prior=p.circuit.checkpoint().sha256;
+ const plan=p.stage(request(p));
+ assert.equal(plan.acquisition.changed_synapses,591);
+ assert.equal(plan.acquisition.changed_synapses_at_risk,320);
+ assert.equal(plan.commit_allowed,false);
+ assert.throws(()=>p.commit(plan.sha256),/after simulation started/);
+ assert.equal(p.circuit.checkpoint().sha256,prior);
+ assert.equal(p.circuit.summary().genomes_unchanged,true);
+});
