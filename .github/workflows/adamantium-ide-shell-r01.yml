@@ -1,0 +1,27 @@
+name: Adamantium IDE Shell R01 (editor-only)
+on:
+  pull_request:
+    paths:
+      - 'adamantium/plugins/node-red-contrib-adamantium-ide-shell/**'
+      - 'test/adamantium/ide-shell.test.mjs'
+      - '.github/workflows/adamantium-ide-shell-r01.yml'
+  push:
+    branches:
+      - 'feature/adamantium-ide-shell-optin-r01-20261120'
+permissions:
+  contents: read
+jobs:
+  package-contract:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Run editor package structural checks
+        run: node --test test/adamantium/ide-shell.test.mjs
