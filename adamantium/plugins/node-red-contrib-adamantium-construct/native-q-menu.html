@@ -88,6 +88,15 @@ padding:10px;display:grid;gap:8px;align-content:space-between}
 #adamantium-construct-native-overlay .adamantium-vault-plan{
  white-space:pre-wrap;overflow:auto;font-size:12px;max-height:150px}
 #adamantium-construct-native-overlay #ada-vault-build:disabled{opacity:.4;cursor:not-allowed}
+
+
+#adamantium-construct-native-overlay .adamantium-tx-panel{border:1px solid var(--red-ui-secondary-border-color,currentColor);border-radius:9px;padding:10px}
+#adamantium-construct-native-overlay .adamantium-tx-panel summary{cursor:pointer;font-weight:600;padding:3px}
+#adamantium-construct-native-overlay .adamantium-tx-buttons{display:flex;gap:8px;flex-wrap:wrap;padding:10px 0}
+#adamantium-construct-native-overlay .adamantium-tx-output{
+ white-space:pre-wrap;overflow:auto;max-height:180px;font-size:12px;
+ border:1px solid var(--red-ui-secondary-border-color,currentColor);
+ border-radius:6px;padding:8px}
 </style>
 <script type="text/javascript">
 (function(){
@@ -98,6 +107,7 @@ const KEY="adamantium.native-q-library.r02";
 const ASSET="resources/node-red-contrib-adamantium-construct/core.mjs";
 const REACTOR_ASSET="resources/node-red-contrib-adamantium-construct/reactor-editor.mjs";
 const VAULT_ASSET="resources/node-red-contrib-adamantium-construct/vault-editor.mjs";
+const TX_ASSET="resources/node-red-contrib-adamantium-construct/graph-tx-editor.mjs";
 const ROOT="adamantium-construct-native-overlay";
 RED.plugins.registerPlugin(PLUGIN,{
   type:"adamantium-editor-overlay",
@@ -132,6 +142,19 @@ RED.plugins.registerPlugin(PLUGIN,{
       "<label><input id='ada-native-auto-tab' type='checkbox'> При новой вкладке автоматически создать сборку</label>",
       "<select id='ada-native-auto-preset' aria-label='Сборка для новой вкладки'></select>",
       "<button type='button' id='ada-native-capsules'>Открыть Capsule Studio</button></div>",
+      "<details id='ada-r5-panel' class='adamantium-tx-panel'>",
+      "<summary>Транзакции R05 · предложения, изолированное исполнение и откат</summary>",
+      "<p>Graph Manager 0.1 поддерживает только чтение. R05 не выполняет Deploy и не меняет работающие потоки.</p>",
+      "<div class='adamantium-tx-buttons'>",
+      "<button id='ada-r5-seed' type='button'>Снимок выделенных нод</button>",
+      "<button id='ada-r5-propose' type='button'>Сформировать diff для QA</button>",
+      "<button id='ada-r5-export' type='button'>Показать review-only пакет</button>",
+      "<button id='ada-r5-demo' type='button'>Демо hot swap + rollback (только в памяти)</button>",
+      "</div>",
+      "<small id='ada-r5-mode'>Graph Manager: only read</small>",
+      "<pre id='ada-r5-output' class='adamantium-tx-output' aria-live='polite'>Сначала выбери ноды и создай снимок, либо запусти изолированное демо.</pre>",
+      "<small>Демо использует синтетические разрешения и QA только внутри памяти браузера. Не является доказательством допуска MAS или production hot swap.</small>",
+      "</details>",
       "<details id='ada-vault-panel' class='adamantium-vault-panel'>",
       "<summary>Версионированная библиотека · SHA-256 · строительная логистика</summary>",
       "<div class='adamantium-vault-fields'>",
@@ -175,7 +198,7 @@ RED.plugins.registerPlugin(PLUGIN,{
     document.body.appendChild(overlay);
     const $=id=>overlay.querySelector("#"+id);
     const cards=$("ada-native-cards");
-    let loaded=null,library=null,tab="builtin",lastFocus=null,working=false,autoBusy=false,corePromise=null,reactorPromise=null,vaultPromise=null,vaultApi=null;
+    let loaded=null,library=null,tab="builtin",lastFocus=null,working=false,autoBusy=false,corePromise=null,reactorPromise=null,vaultPromise=null,vaultApi=null,txPromise=null;
     const pending=new Set();
     const showError=error=>{
       const value=error?.message||String(error);
@@ -327,6 +350,13 @@ RED.plugins.registerPlugin(PLUGIN,{
       vaultApi=await vaultPromise;
       return vaultApi;
     }
+    async function ensureTx(){
+      if(!txPromise)txPromise=import(new URL(TX_ASSET,document.baseURI).href)
+        .then(module=>module.startNativeGraphTx({
+          RED,overlay,core:loaded,writable,status,error:showError
+        }));
+      return txPromise;
+    }
     async function open(){
       if(working)return;
       working=true;
@@ -334,6 +364,7 @@ RED.plugins.registerPlugin(PLUGIN,{
         await ensureLoaded();
         await ensureReactor();
         await ensureVault();
+        await ensureTx();
         lastFocus=document.activeElement;
         overlay.hidden=false;render();$("ada-native-search").focus();
       }catch(error){showError(error);}
