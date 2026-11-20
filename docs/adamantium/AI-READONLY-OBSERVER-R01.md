@@ -32,6 +32,10 @@ A separate identity ai-observer holds only Node-RED adminAuth permission read; t
 5. Observer one-shot unit exited 0, created a 0600 private JSON snapshot, and timer was enabled.
 6. NeuroCMS remains active, local Qwen inference remains disabled, and both editor servers continue to listen on loopback only.
 
+## Windows security boundary
+
+The observer's graph projection and read-scope token code are portable, but its **private snapshot writer is intentionally disabled on Windows**. POSIX mode 0600 is not a reliable Windows ACL guarantee. The Node.js Windows CI test explicitly checks that persistence fails closed rather than producing an inadequately protected file. Windows deployment requires a separately verified owner-only ACL adapter before enabling periodic snapshots.
+
 ## Known limitations / next release gates
 
 - Observed topology and diff are not authoritative mechanicus.universal-graph/1. Configuration-only/code-only changes may be invisible in a metadata diff; revisions still change.
