@@ -1,0 +1,29 @@
+name: Adamantium AI Graph Inspector R01
+
+on:
+  push:
+    branches:
+      - feat/ai-graph-inspector-live-r01-20261120
+  pull_request:
+    paths:
+      - 'adamantium/ai-graph-inspect.mjs'
+      - 'test/adamantium/ai-graph-inspect.test.mjs'
+      - '.github/workflows/adamantium-ai-graph-inspect-r01.yml'
+
+jobs:
+  inspector:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Syntax
+        run: node --check adamantium/ai-graph-inspect.mjs
+      - name: Isolated pure tests
+        run: node --test test/adamantium/ai-graph-inspect.test.mjs
