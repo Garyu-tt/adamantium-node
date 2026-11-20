@@ -5,6 +5,7 @@
     const TAB = "adamantium-capsules-r02";
     const ACTION = "adamantium:show-capsule-studio";
     const RESOURCE = "resources/node-red-contrib-adamantium-capsules/preview/index.html";
+    const LENS_RESOURCE = "resources/node-red-contrib-adamantium-capsules/native-canvas-lens.mjs";
     RED.plugins.registerPlugin(TAB, {
         type: "adamantium-editor-sidebar",
         onadd: function () {
@@ -33,12 +34,81 @@
                 "border": "0", "background": "var(--red-ui-primary-background-color, #1a2431)"
             }).appendTo(content);
             let initialized = false;
+            let lens = null;
+            let lensPromise = null;
+            const iframe = frame[0];
+            function sendToStudio(command) {
+                if (initialized && iframe && iframe.contentWindow) {
+                    iframe.contentWindow.postMessage(command, window.location.origin);
+                }
+            }
+            function requestProjection() {
+                sendToStudio({type:"adamantium:native-canvas-refresh/1"});
+            }
+            function forwardIntent(action,params) {
+                sendToStudio(Object.assign({
+                    type:"adamantium:native-canvas-intent/1",action
+                },params));
+            }
+            const onProjection = function(event) {
+                if (event.origin !== window.location.origin ||
+                    !iframe || event.source !== iframe.contentWindow)return;
+                const message=event.data;
+                if (!message || message.type!=="adamantium:native-canvas-projection/1")return;
+                try {
+                    if (lens) lens.setProjection(message.projection);
+                }catch(error) {
+                    label.text("Canvas: отклонён некорректный граф");
+                }
+            };
+            window.addEventListener("message",onProjection);
+            frame.on("load",requestProjection);
             function start() {
                 if (!initialized) {
                     frame.attr("src", url);
                     initialized = true;
                 }
             }
+            function createLens() {
+                if (lens) return Promise.resolve(lens);
+                if (!lensPromise) {
+                    const moduleURL=new URL(LENS_RESOURCE, document.baseURI).href;
+                    lensPromise=import(moduleURL).then(function(module) {
+                        lens=module.createNativeCanvasLens({
+                            RED:RED,
+                            onNavigate:function(e) {
+                                forwardIntent("enter",{
+                                    graphId:e.graphId,childGraphId:e.childGraphId,nodeId:e.nodeId
+                                });
+                            },
+                            onMove:function(e){forwardIntent("move",e);},
+                            onConnect:function(e){forwardIntent("connect",e);},
+                            onWarning:function(text){label.text("Canvas: "+text);}
+                        });
+                        return lens;
+                    }).catch(function(error){
+                        lensPromise=null;
+                        throw error;
+                    });
+                }
+                return lensPromise;
+            }
+            const canvasButton=$("<button>",{
+                "type":"button","text":"Canvas: выключен",
+                "title":"Отдельный графовый слой на настоящем SVG Node-RED, без /flows и Deploy"
+            }).on("click",function(){
+                start();
+                createLens().then(function(result){
+                    const enabled=result.show(!result.status().active);
+                    canvasButton.text(enabled?"Canvas: включён":"Canvas: выключен");
+                    if (enabled)requestProjection();
+                    label.text(enabled?
+                        "Canvas: SVG-слой только для редактирования, без исполнения":
+                        "Локальные графы · исходники не исполняются");
+                }).catch(function(error){
+                    label.text("Canvas: ошибка загрузки редактора");
+                });
+            }).appendTo(toolbar);
             $("<button>",{"type":"button","text":"Открыть графы"})
                 .on("click",start).appendTo(toolbar);
             $("<button>",{"type":"button","text":"На весь экран ↗"})
