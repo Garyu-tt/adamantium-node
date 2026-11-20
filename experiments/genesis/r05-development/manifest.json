@@ -11,7 +11,7 @@
   },
   "source_files_sha256": {
     "lib/development-planner.cjs": "69ff7e7fe95b2b734e900427ccbe6be523d3206e0eb980db113302d775d99d58",
-    "test/r05.test.cjs": "7eb224dea39021958058a4eb957f0b629f7fb127ba8307b46259c4a4a9514631",
+    "test/r05.test.cjs": "c6eac4c70e26c81431cfee723f870a1d1481aa64f504a9441e7f6f0172077f20",
     "README.md": "b6196367b590231505663c0828d911e4b2fbfd20494f4f68eaef6a5966a5cca2",
     "cli.cjs": "70d8fa9b34dd3d7ac2fd0c3825c3ec1ec5a877978afb98a480c8b011eb90fcff",
     "package.json": "8327133588e6a43e68e3cd489c1d408e58ee2128fd7352ca25d7f0d606dc1a32"
@@ -28,7 +28,7 @@
     }
   },
   "baseline_tests": {
-    "r05": 25,
+    "r05": 26,
     "r03": 15,
     "expected_demo": {
       "active_v1": 1024,
@@ -37,7 +37,9 @@
       "total_spikes": 2821,
       "synapses_retained": 1200,
       "synapses_removed": 2300,
-      "synapses_added": 2981
+      "synapses_added": 2981,
+      "learned_synapses_after_120": 591,
+      "learned_synapses_at_risk": 320
     }
   },
   "safety": {
