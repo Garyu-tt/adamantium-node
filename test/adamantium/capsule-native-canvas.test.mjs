@@ -173,7 +173,7 @@ test("corrupt storage refuses implicit overwrite and explicit refresh can recove
  const f=fixture();
  f.backing.set(STORAGE_KEY,"{invalid JSON");
  f.canvas.refresh();
- assert.match(f.canvas.notice,/Прочитан/);
+ assert.match(f.canvas.notice,/повреждены|недоступны/);
  // A corrupt origin is preserved until the user's own sidebar replaces it.
  const original=f.backing.get(STORAGE_KEY);
  f.canvas.addCapsule();
