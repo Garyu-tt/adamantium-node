@@ -1,0 +1,72 @@
+{
+  "schema": "mechanicus.genesis-artifact-handoff/2",
+  "id": "genesis.neural-circuit.r03.windows.cpu",
+  "revision": 1,
+  "source": {
+    "repository": "Garyu-tt/adamantium-node",
+    "commit": "77ce5576081947255ffd1f28929dc1acc198b211",
+    "path": "experiments/genesis/r03-runtime.zip.b64",
+    "encoding": "base64",
+    "archive": "zip",
+    "sha256": "100433d0b2c2d561577b770a0120656683372d0b6a4f95928e833a92d61dd3be",
+    "archive_bytes": 5986
+  },
+  "extracted_file_allowlist": [
+    "cli.cjs",
+    "examples/lgn.json",
+    "examples/v2.json",
+    "lib/circuit.cjs",
+    "package.json"
+  ],
+  "baseline": {
+    "version": "genesis-neural-engine-r02",
+    "borrowed_source_verified_sha256": {
+      "lib/neural-engine.cjs": "cf20fe736a60043a93b47b418e6245a383a56a8a324d290aba26213184bad9ed",
+      "lib/region-contract.cjs": "a46238271d4d72f75766ab2da861aa9f138afc2fa7fb6da2a0016b618a69ed8c",
+      "examples/dante-v1-left.json": "971a878e5a093f22dc87220545e379998ccbb71341d4fd7b1b621b308e6a9f54"
+    }
+  },
+  "tests": {
+    "commit": "55671c1ef4335d3708eb648c7619456db206f205",
+    "path": "experiments/genesis/r03-circuit.test.cjs",
+    "sha256": "afb22321a562ff26a4389bdcbbaeeed04fc92ed555272163fab98a7400b40566",
+    "expected_count": 15
+  },
+  "execution_policy": {
+    "runtime": "node>=22",
+    "windows_standard_user": true,
+    "install_scope": "%LOCALAPPDATA%/Mechanicus/experiments/genesis_neural_circuit_r03",
+    "forbidden_actions": [
+      "overwrite-existing-install",
+      "restart-node-red",
+      "elevate-windows",
+      "access-camera",
+      "invoke-arbitrary-shell-from-flow",
+      "change-repository-main"
+    ],
+    "allowlisted_operator_actions": [
+      "test-r03",
+      "run-r03-moving",
+      "run-r03-dark",
+      "run-r03-bright",
+      "run-r03-checkerboard"
+    ],
+    "replay": {
+      "seed": 42,
+      "steps": 120,
+      "expected_spikes": {
+        "moving-bar": 2646,
+        "dark": 0,
+        "bright": 8809,
+        "checkerboard": 6173
+      },
+      "region_count": 3,
+      "expected_genomes_unchanged": true
+    }
+  },
+  "status": {
+    "fidelity": "CPU-first experimental neural dynamics; not biological evidence",
+    "verification": "SHA256 provides integrity against pinned manifest, not cryptographic publisher signature",
+    "provenance": "R03 code review and external signer integration remain separate"
+  }
+}
