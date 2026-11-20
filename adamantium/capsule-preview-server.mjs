@@ -7,7 +7,7 @@
 import {createServer} from "node:http";
 import {readFile} from "node:fs/promises";
 const PORT=Number(process.argv[2] || 1886);
-if(!Number.isSafeInteger(PORT)||PORT<1024||PORT>65535)throw new Error("port must be 1024..65535");
+if(!Number.isSafeInteger(PORT)||PORT<0||PORT>65535)throw new Error("port must be 0..65535 (0 = ephemeral test port)");
 const fileMap={
   "/":new URL("./capsule-preview/index.html",import.meta.url),
   "/index.html":new URL("./capsule-preview/index.html",import.meta.url),
@@ -27,4 +27,4 @@ const server=createServer(async(req,res)=>{
     res.end(req.method==="HEAD"?undefined:bytes);
   }catch{res.writeHead(500);res.end("Preview file unavailable");}
 });
-server.listen(PORT,"127.0.0.1",()=>console.log("Capsule Studio R01 (inert preview) http://127.0.0.1:"+PORT));
+server.listen(PORT,"127.0.0.1",()=>console.log("Capsule Studio R01 (inert preview) http://127.0.0.1:"+server.address().port));
