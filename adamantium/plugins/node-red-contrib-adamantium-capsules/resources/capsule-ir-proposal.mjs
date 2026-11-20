@@ -17,6 +17,12 @@ const SEMANTICS = new Set(["data","control","event","signal"]);
 const OBJECT = value => value!==null && typeof value==="object" && !Array.isArray(value);
 function ensure(ok,detail){if(!ok)throw new TypeError("Capsule IR proposal: "+detail);}
 function clone(value){return JSON.parse(JSON.stringify(value));}
+function exact(value,expected,context){
+  ensure(OBJECT(value),context+" must be object");
+  const actual=Object.keys(value).sort();
+  const wanted=expected.slice().sort();
+  ensure(JSON.stringify(actual)===JSON.stringify(wanted),context+" has unknown/missing fields");
+}
 const byId = (a,b)=>a.id.localeCompare(b.id);
 function port(p) {
   ensure(OBJECT(p) && SEMANTICS.has(p.semantics),"forbidden port semantics");
@@ -147,6 +153,7 @@ export function createCapsuleIRProposal(studio,{revision=1,domain="program"}={})
  * This does NOT verify a signed producer, CAS head or native Graph IR authority. */
 export function inspectCapsuleIRProposal(proposal) {
   ensure(OBJECT(proposal) && proposal.format===IR_PROPOSAL_VERSION,"unsupported proposal format");
+  exact(proposal,["format","mode","authority","executable","approved","rootGraphId","revision","graphs","boundaryBindings","definitionHandles"],"proposal");
   ensure(proposal.mode==="proposal-only" && proposal.authority==="none" &&
     proposal.executable===false && proposal.approved===false,"forbidden authority flags");
   ensure(Number.isSafeInteger(proposal.revision)&&proposal.revision>=1,"invalid revision");
@@ -155,7 +162,18 @@ export function inspectCapsuleIRProposal(proposal) {
   ensure(Array.isArray(proposal.boundaryBindings)&&Array.isArray(proposal.definitionHandles),"invalid sidecars");
   ensure(proposal.boundaryBindings.length<=256000&&proposal.definitionHandles.length<=2000,"sidecar budget exceeded");
   const graphs=new Map();
+  let nodeCount=0,edgeCount=0;
   for(const graph of proposal.graphs){
+    exact(graph,["schema","schemaVersion","id","revision","domain","interfacePorts","nodes","edges"],"IR graph");
+    nodeCount+=graph.nodes?.length||0;edgeCount+=graph.edges?.length||0;
+    ensure(nodeCount<=100000&&edgeCount<=200000,"total node/edge budget exceeded");
+    for(const p of graph.interfacePorts||[])exact(p,["id","dataType","direction","semantics"],"IR interface port");
+    for(const n of graph.nodes||[]){
+      exact(n,["id","kind","typeRef","graphRef","graphRefRevision","ports"],"IR node");
+      for(const p of n.ports||[])exact(p,["id","dataType","direction","semantics"],"IR node port");
+    }
+    for(const edge of graph.edges||[])exact(edge,
+      ["id","fromNode","fromPort","toNode","toPort","semantics","delayTicks"],"IR edge");
     ensure(OBJECT(graph)&&!graphs.has(graph.id),"duplicate/bad graph");
     ensure(graph.revision===proposal.revision,"stale graph within proposal");
     createReadOnlyProjection(graph);
@@ -188,6 +206,7 @@ export function inspectCapsuleIRProposal(proposal) {
   }
   const bindings=new Map();
   for(const b of proposal.boundaryBindings) {
+    exact(b,["graphId","parentGraphId","containerId","tag","side","internalNode","internalTag","direction","semantics","dataType"],"boundary binding");
     ensure(OBJECT(b)&&graphs.has(b.graphId)&&["north","east","south","west"].includes(b.side),"invalid boundary binding");
     const parent=childToParent.get(b.graphId);
     ensure(!!parent&&parent.graphId===b.parentGraphId&&parent.containerId===b.containerId,"mismatched boundary owner");
@@ -205,17 +224,22 @@ export function inspectCapsuleIRProposal(proposal) {
   }
   const expected=proposal.graphs.reduce((count,graph)=>count+graph.interfacePorts.length,0);
   ensure(bindings.size===expected,"unbound composite interface");
-  const typeRefs=new Set();
+  const typeRefs=new Map();
   for(const d of proposal.definitionHandles) {
+    exact(d,["definitionId","version","language","typeRef","portCount"],"definition handle");
     ensure(OBJECT(d)&&typeof d.definitionId==="string"&&Number.isSafeInteger(d.version)&&d.version>=1,"invalid definition handle");
     ensure(typeof d.typeRef==="string"&&!typeRefs.has(d.typeRef),"duplicate/bad definition handle");
-    typeRefs.add(d.typeRef);
+    ensure(Number.isSafeInteger(d.portCount)&&d.portCount>=0&&d.portCount<=128,"invalid definition port count");
+    typeRefs.set(d.typeRef,d);
     ensure(d.typeRef==="adamantium.microprogram."+d.language+"."+d.definitionId+"@"+d.version,
       "definition typeRef mismatch");
   }
   for(const graph of graphs.values()){
     for(const node of graph.nodes){
-      if(node.kind!=="composite")ensure(typeRefs.has(node.typeRef),"unregistered microprogram typeRef");
+      if(node.kind!=="composite"){
+        ensure(typeRefs.has(node.typeRef),"unregistered microprogram typeRef");
+        ensure(node.ports.length===typeRefs.get(node.typeRef).portCount,"definition port count mismatch");
+      }
     }
   }
   // No source code, privileges or token material should appear in this bundle.
