@@ -5,11 +5,53 @@
     const TAB = "adamantium-capsules-r02";
     const ACTION = "adamantium:show-capsule-studio";
     const RESOURCE = "resources/node-red-contrib-adamantium-capsules/preview/index.html";
+    const R07_MODULE = "resources/node-red-contrib-adamantium-capsules/capsule-native-canvas.mjs";
+    const R07_CSS = "resources/node-red-contrib-adamantium-capsules/canvas.css";
+    let canvasModulePromise = null;
+    let nativeCanvas = null;
+    function showError(error) {
+        const message = "Adamantium SVG: " + (error && error.message || String(error));
+        if (RED.notify) RED.notify(message,"warning");
+        else console.warn(message);
+    }
+    function toggleNativeCanvas(visible) {
+        if (!canvasModulePromise) {
+            const source = new URL(R07_MODULE,document.baseURI).href;
+            canvasModulePromise = import(source).then(function(mod) {
+                if (typeof RED.hooks?.add !== "function") {
+                    throw new Error("Missing native viewRedrawCanvas hook");
+                }
+                const instance = new mod.CapsuleNativeCanvas({
+                    doc: document,
+                    storage: window.localStorage,
+                    requestRedraw: function() { RED.view.redraw(false,true); }
+                });
+                RED.hooks.add("viewRedrawCanvas.adamantium-capsules",function(payload){
+                    instance.redraw(payload);
+                });
+                nativeCanvas = instance;
+                return instance;
+            }).catch(function(err){
+                canvasModulePromise = null;
+                throw err;
+            });
+        }
+        canvasModulePromise.then(function(canvas){
+            canvas.setEnabled(visible);
+        }).catch(showError);
+    }
     RED.plugins.registerPlugin(TAB, {
         type: "adamantium-editor-sidebar",
         onadd: function () {
             if (RED.sidebar.containsTab(TAB)) {
                 return;
+            }
+            if (!document.getElementById("adamantium-canvas-r07-style")) {
+                const style = document.createElement("link");
+                style.id = "adamantium-canvas-r07-style";
+                style.rel = "stylesheet";
+                style.href = new URL(R07_CSS,document.baseURI).href;
+                document.head.appendChild(style);
             }
             const content = $("<div>").css({
                 "display": "flex", "flex-direction": "column",
@@ -46,8 +88,18 @@
                     start();
                     window.open(url,"_blank","noopener,noreferrer");
                 }).appendTo(toolbar);
+            $("<button>",{"type":"button","text":"Основной SVG"})
+                .on("click",function(){ toggleNativeCanvas(true); }).appendTo(toolbar);
+            $("<button>",{"type":"button","text":"Скрыть SVG"})
+                .on("click",function(){ toggleNativeCanvas(false); }).appendTo(toolbar);
             RED.actions.add(ACTION,function(){
                 RED.sidebar.show(TAB);
+            });
+            RED.actions.add("adamantium:show-native-capsule-canvas",function(){
+                toggleNativeCanvas(true);
+            });
+            RED.actions.add("adamantium:hide-native-capsule-canvas",function(){
+                if (nativeCanvas) nativeCanvas.setEnabled(false);
             });
             RED.sidebar.addTab({
                 id:TAB,
