@@ -4,6 +4,26 @@
     "use strict";
     const TAB = "adamantium-capsules-r02";
     const ACTION = "adamantium:show-capsule-studio";
+    const NATIVE_ACTION = "adamantium:toggle-native-canvas";
+    const NATIVE_RESOURCE = "resources/node-red-contrib-adamantium-capsules/capsule-native-canvas.mjs";
+    let nativeController = null;
+    async function toggleNativeCanvas() {
+        if (nativeController && !nativeController.inspect().closed) {
+            nativeController.close();
+            nativeController = null;
+            return;
+        }
+        // This module operates in the real Node-RED SVG event layer, but
+        // its graph remains a separate inert CapsuleStudio draft.
+        const lib = await import(new URL(NATIVE_RESOURCE, document.baseURI).href);
+        nativeController = lib.mountNativeCapsuleWorkspace();
+    }
+    function toggleSafely() {
+        toggleNativeCanvas().catch(function(error) {
+            console.error("Capsule native SVG failed to open", error);
+            if (RED.notify) RED.notify("Capsule SVG: " + error.message, "error");
+        });
+    }
     const RESOURCE = "resources/node-red-contrib-adamantium-capsules/preview/index.html";
     RED.plugins.registerPlugin(TAB, {
         type: "adamantium-editor-sidebar",
@@ -41,6 +61,8 @@
             }
             $("<button>",{"type":"button","text":"Открыть графы"})
                 .on("click",start).appendTo(toolbar);
+            $("<button>",{"type":"button","text":"На основной SVG"})
+                .on("click",toggleSafely).appendTo(toolbar);
             $("<button>",{"type":"button","text":"На весь экран ↗"})
                 .on("click",function() {
                     start();
@@ -49,6 +71,7 @@
             RED.actions.add(ACTION,function(){
                 RED.sidebar.show(TAB);
             });
+            RED.actions.add(NATIVE_ACTION,toggleSafely);
             RED.sidebar.addTab({
                 id:TAB,
                 name:"Adamantium Capsule Studio",
