@@ -8,6 +8,7 @@ on:
       - "adamantium/construct-native/**"
       - "adamantium/plugins/node-red-contrib-adamantium-construct/**"
       - "test/adamantium/construct-native.test.mjs"
+      - "test/adamantium/construct-native-browser-smoke.mjs"
       - ".github/workflows/construct-native-r02.yml"
 jobs:
   native-q-check:
@@ -26,3 +27,23 @@ jobs:
         run: |
           node --check adamantium/construct-native/core.mjs
           node --test test/adamantium/construct-native.test.mjs
+
+  native-q-browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install isolated Node-RED and browser driver
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/construct-smoke"
+          npm install --prefix "$RUNNER_TEMP/construct-smoke" --no-save --ignore-scripts --no-audit --no-fund node-red@5.0.10 playwright-core@1.56.1
+      - name: Native Q editor real-browser smoke in disposable safe-mode Node-RED
+        shell: bash
+        run: |
+          CHROME_BIN="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$CHROME_BIN"
+          CONSTRUCT_DEPS_ROOT="$RUNNER_TEMP/construct-smoke" CONSTRUCT_CHROME="$CHROME_BIN" node test/adamantium/construct-native-browser-smoke.mjs
