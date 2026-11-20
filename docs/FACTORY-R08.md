@@ -31,3 +31,8 @@ Linux and Windows Node 22/24 test pinned witness identities, Ed25519 anchor rece
 ## MAS authority
 
 No signed receipt creates authorization for Lifecycle, deployment, network interface changes, publication, host migration, file transfers or configuration writes. `installationApproved:false`, `grantsMASPermission:false`, `productionPublished:false` remain hard-coded until a separate verified MAS policy service explicitly authorizes an appropriate action. R08 is a witness, not the execution authority.
+## Offline operator CLI on an independently approved host
+
+The safe source package also provides `adamantium/node-factory/cli-anchor-r08.mjs` with `init <new-absolute-anchor-directory> <policy.json>`, `attest <anchor-directory> <public-evidence-bundle.json>`, and `inspect <anchor-directory>`. Generate the Ed25519 key **on the destination** only. `policy.json` pins `ledgerId`, `sourceWitnessId` and `sourceWitnessKeyFingerprint`; the evidence bundle contains only R05 JSONL and R06 public PEM/identity/signed receipts. These commands are local/offline and **do not create** the required mTLS transport or MAS privilege. `FactoryEvidenceAnchor.open()` additionally permits an independently pinned `trustedSequence` + `trustedReceiptHash` to catch complete-history rollback.
+
+On the owner's current laptop the `remote-anchor-status.json` view is explicitly `not_connected`; the disconnected status is never auto-upgraded by the mere presence of a GitHub PR, running VM, same-host proof or an unsigned response.
