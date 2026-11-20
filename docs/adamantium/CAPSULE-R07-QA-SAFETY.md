@@ -27,6 +27,8 @@
 - В обоих запусках был обязательным реальный предварительно собранный canonical Universal Graph C++17 G0 из ToolBox PR #143; `ADAMANTIUM_G0_REQUIRED=true`.
 - Добавлены adversarial-тесты скрытых портов, quota failure, отката схемы/соединений/перетаскивания, ошибки уведомления после записи и предотвращения stale last-writer-wins.
 - Изменения зеркально синхронизированы в source и `node-red-contrib-adamantium-capsules/resources`; существующий byte-exact plugin test остаётся зелёным.
+- Реальный **Chromium 156 headless**, запущенный в отдельном временном каталоге без системной установки, прошёл браузерный smoke: 3 SVG-карточки, 4 стороны портов, создание связи кликами, запись 1 ребра в localStorage, сохранность штатных SVG-элементов Node-RED, отсутствие исходников внутри SVG и отсутствие runtime activation. Это **изолированный DOM-стенд с реальными browser events**, не браузерная приёмка всей собранной Node-RED IDE.
+- Тот же сценарий сохранён в `test/browser/fixtures/capsule-native-svg.html` и `test/browser/capsule-native-chrome.test.mjs`; GitHub Actions `.github/workflows/capsule-r07-browser-qa.yml` делает запуск Chromium обязательным, без автоматического skip.
 
 ## Границы
 
