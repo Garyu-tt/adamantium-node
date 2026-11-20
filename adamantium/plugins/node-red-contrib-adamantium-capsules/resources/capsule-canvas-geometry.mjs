@@ -65,14 +65,19 @@ export function layoutCapsuleCanvas(studio,graphId,positions={},expandedSides={}
     for(const side of SIDES){
       const entry=visibleBySide[side],all=bySide[side];
       for(const [index,p] of all.entries()){
-        const displayIndex=index,visible=displayIndex<entry.visible.length;
+        const visible=index<entry.visible.length;
+        // Collapsed anchors are laid out over the visible subset, not packed
+        // into the first 4/128th of the rail. Hidden anchors retain separate
+        // model identities but are deliberately not selectable or wired.
+        const slots=visible?entry.visible.length:all.length;
+        const fraction=(index+1)/(slots+1);
         let px,py,normalX=DIRECTIONS[side][0],normalY=DIRECTIONS[side][1];
         if(side==="north"||side==="south"){
-          px=x+(index+1)*width/(all.length+1);
+          px=x+fraction*width;
           py=y+(side==="north"?0:height);
         }else {
           px=x+(side==="west"?0:width);
-          py=y+(index+1)*height/(all.length+1);
+          py=y+fraction*height;
         }
         // A collapsed side is a visibility filter, never a port remapping.
         // Each hidden port keeps its own stable, distinct anchor geometry.
