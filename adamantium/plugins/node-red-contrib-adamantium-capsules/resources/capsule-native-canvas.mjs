@@ -79,7 +79,7 @@ export function mountNativeCapsuleWorkspace({
     if(textValue!==undefined)el.textContent=String(textValue);
     return el;
   }
-  function append(parent,...children){for(const child of children)parent.appendChild(child);return parent;}
+  function append(parent,...children){for(const child of children)parent.appendChild(child);return children.length===1?children[0]:parent;}
   function text(parent,x,y,value,attrs={}){
     parent.appendChild(svg("text",{
       x,y,fill:T.text,"font-size":12,"font-family":"sans-serif",
