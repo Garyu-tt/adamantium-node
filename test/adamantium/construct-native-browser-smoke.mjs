@@ -157,6 +157,15 @@ try {
       topic:"",payload:"",payloadType:"date",wires:[[]]
     }],{generateIds:true,touchImport:true,notify:false,eventContext:{source:"palette"}});
   });
+  const diag=await page.evaluate(()=>({
+    count:RED.nodes.filterNodes({z:RED.workspaces.active()}).length,
+    flow:RED.workspaces.active(),
+    locked:RED.workspaces.isLocked(),
+    names:RED.nodes.filterNodes({z:RED.workspaces.active()}).map(n=>n.type+":"+n.name),
+    status:document.querySelector("#ada-native-status")?.textContent,
+    rules:Array.from(document.querySelectorAll("#ada-r3-rules input")).map(x=>({checked:x.checked}))
+  }));
+  console.log("R03_DIAGNOSTIC",JSON.stringify(diag));
   await page.waitForFunction(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length===5,
     null,{timeout:15000});
   const reaction=await page.evaluate(()=>{
