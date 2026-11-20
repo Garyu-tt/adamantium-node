@@ -138,3 +138,20 @@ test("unverified definition handles cannot hide mismatched port counts",()=>{
  safe.definitionHandles[0].portCount=0;
  assert.throws(()=>inspectCapsuleIRProposal(safe),/definition port count mismatch/);
 });
+
+test("rejects semantic-only graph wires and policy nodes even when typed consistently",()=>{
+ const {studio}=example();
+ const proposal=createCapsuleIRProposal(studio);
+ const semantic=structuredClone(proposal);
+ const g=semantic.graphs.find(x=>x.edges.length);
+ const e=g.edges[0];
+ e.semantics="permission";
+ const from=g.nodes.find(n=>n.id===e.fromNode);
+ const to=g.nodes.find(n=>n.id===e.toNode);
+ from.ports.find(p=>p.id===e.fromPort).semantics="permission";
+ to.ports.find(p=>p.id===e.toPort).semantics="permission";
+ assert.throws(()=>inspectCapsuleIRProposal(semantic),/semantic-only edges/);
+ const policy=structuredClone(proposal);
+ policy.graphs.flatMap(g=>g.nodes).find(n=>n.kind==="service").kind="policy";
+ assert.throws(()=>inspectCapsuleIRProposal(policy),/unsupported node kind/);
+});
