@@ -1,0 +1,10 @@
+{
+  "name": "@mechanicus/genesis-development-r05",
+  "version": "0.5.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "engines": {"node": ">=22"},
+  "description": "CPU-first genotypically bound neural region development plan and pre-start structural recompile (no live topology hot swap)",
+  "scripts": {"test": "node --test test/*.test.cjs", "demo": "node cli.cjs"}
+}
