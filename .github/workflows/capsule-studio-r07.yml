@@ -12,6 +12,7 @@ on:
       - "adamantium/capsule-preview/**"
       - "adamantium/plugins/node-red-contrib-adamantium-capsules/**"
       - "test/adamantium/capsule-native-*.test.mjs"
+      - "test/adamantium/capsule-browser-*"
       - ".github/workflows/capsule-studio-r07.yml"
   workflow_dispatch:
 permissions:
@@ -75,3 +76,11 @@ jobs:
           node --check adamantium/capsule-native-canvas.mjs
           node --check adamantium/capsule-preview/app.mjs
           node --test test/adamantium/capsule-*.test.mjs
+      - name: Real Chromium SVG workspace smoke (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          BIN="$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || true)"
+          if [ -z "$BIN" ]; then echo "Chrome/Chromium missing from runner"; exit 1; fi
+          export ADAMANTIUM_CHROMIUM_BIN="$(readlink -f "$BIN")"
+          node test/adamantium/capsule-browser-smoke.mjs
