@@ -15,7 +15,8 @@ const fileMap={
   "/capsule-studio.mjs":new URL("./capsule-studio.mjs",import.meta.url),
   "/capsule-extract.mjs":new URL("./capsule-extract.mjs",import.meta.url),
   "/capsule-ir-proposal.mjs":new URL("./capsule-ir-proposal.mjs",import.meta.url),
-  "/editor-projection.mjs":new URL("./editor-projection.mjs",import.meta.url)
+  "/editor-projection.mjs":new URL("./editor-projection.mjs",import.meta.url),
+  "/capsule-draft-storage.mjs":new URL("./capsule-draft-storage.mjs",import.meta.url)
 };
 const server=createServer(async(req,res)=>{
   res.setHeader("Cache-Control","no-store");
