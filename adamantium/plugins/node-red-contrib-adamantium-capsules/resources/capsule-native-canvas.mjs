@@ -166,7 +166,7 @@ export class CapsuleNativeCanvas {
       this.graphId=checkpoint.graphId;
       this.selected=new Set(checkpoint.selected);
       this.activePort=null;
-      this.notice="Изменения отменены: "+error.message;
+      this.notice="Операция отклонена. Изменения отменены: "+error.message;
       result=null;
     }
     this.dirty=true;this.requestRedraw();
