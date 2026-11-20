@@ -14,6 +14,7 @@ const fileMap={
   "/app.mjs":new URL("./capsule-preview/app.mjs",import.meta.url),
   "/capsule-studio.mjs":new URL("./capsule-studio.mjs",import.meta.url),
   "/capsule-extract.mjs":new URL("./capsule-extract.mjs",import.meta.url),
+  "/capsule-native-canvas.mjs":new URL("./capsule-native-canvas.mjs",import.meta.url),
   "/capsule-ir-proposal.mjs":new URL("./capsule-ir-proposal.mjs",import.meta.url),
   "/editor-projection.mjs":new URL("./editor-projection.mjs",import.meta.url)
 };
