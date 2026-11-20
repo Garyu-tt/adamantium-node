@@ -78,6 +78,7 @@ test("native G0 rejects malformed wire text directly",
  {skip:!NEED_NATIVE},()=>{
   for(const input of ["UGIR1\nROOT root\n1\nGRAPH root 1 program 1 0 1 0\n",
    "UGIR1\nROOT root\n99999999\n",
+   "UGIR1\nROOT root\n1\nGRAPH root 1 program 4294967297 0 0 0\nENDGRAPH\nEND\n",
    "UGIR1\nROOT root\n1\nGRAPH root 1 program 1 0 0 0\nENDGRAPH\nEND\nFORGED\n"]) {
     const r=spawnSync(BIN,{input,encoding:"utf8",timeout:3000});
     assert.notEqual(r.status,0);
