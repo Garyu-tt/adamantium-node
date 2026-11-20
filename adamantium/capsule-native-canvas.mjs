@@ -91,6 +91,7 @@ export class CapsuleNativeCanvas {
     this.expandedSides=Object.create(null);
     this.dirty=true;this.layers=null;this.notice="Без исполнения · локальный слой";
     this.storageLocked=false;
+    this.storageHead=null; // last observed exact bytes, not authoritative CAS
     this.drag=null;
     this.read();
   }
@@ -99,6 +100,7 @@ export class CapsuleNativeCanvas {
     this.storageLocked=false;
     try{
       const text=this.storage.getItem(STORAGE_KEY);
+      this.storageHead=text;
       if(text){
         const json=JSON.parse(text);
         const studio=CapsuleStudio.restore(json.model);
@@ -126,13 +128,60 @@ export class CapsuleNativeCanvas {
     }
     try {
       const state={model:this.studio.snapshot(),templates:this.library.snapshot(),positions:this.positions};
-      this.storage.setItem(STORAGE_KEY,JSON.stringify(state));
-      this.onUpdate({graphId:this.graphId,source:"capsule-native-canvas"});
+      // Fail closed when another tab/iframe saved after our last successful
+      // read/write. localStorage itself offers NO atomic multi-tab CAS; this
+      // protects against common stale writers, not a simultaneous write race.
+      if(this.storage.getItem(STORAGE_KEY)!==this.storageHead){
+        this.notice="Граф изменён во внешнем редакторе: обнови актуальную версию перед записью.";
+        return false;
+      }
+      const encoded=JSON.stringify(state);
+      this.storage.setItem(STORAGE_KEY,encoded);
+      this.storageHead=encoded;
+      // A nonessential UI notifier must not turn a successful disk/browser
+      // write into a reported persistence failure.
+      try {
+        this.onUpdate({graphId:this.graphId,source:"capsule-native-canvas"});
+      } catch (_ignored) { /* persisted state remains canonical */ }
       return true;
     }catch(error){
       this.notice="Ошибка сохранения. Проверь доступный объём хранилища и экспортируй через Sidebar.";
       return false;
     }
+  }
+  /**
+   * Editor operations are all-or-nothing at the localStorage boundary.
+   * A failed browser quota/write must not leave a phantom in-memory graph
+   * that silently disappears on reload or overwrites a newer saved model.
+   */
+  mutateWithPersistence(operation){
+    if(this.storageLocked){
+      this.notice="Сохранение заблокировано. Исправь хранилище через Sidebar.";
+      this.dirty=true;this.requestRedraw();return null;
+    }
+    const checkpoint={
+      model:this.studio.snapshot(),
+      library:this.library.snapshot(),
+      positions:JSON.parse(JSON.stringify(this.positions)),
+      graphId:this.graphId,
+      selected:Array.from(this.selected)
+    };
+    let result=null;
+    try{
+      result=operation();
+      if(!this.save())throw new Error(this.notice||"browser storage write rejected");
+    }catch(error){
+      this.studio=CapsuleStudio.restore(checkpoint.model);
+      this.library=CapsuleTemplateLibrary.restore(checkpoint.library);
+      this.positions=checkpoint.positions;
+      this.graphId=checkpoint.graphId;
+      this.selected=new Set(checkpoint.selected);
+      this.activePort=null;
+      this.notice="Операция отклонена. Изменения отменены: "+error.message;
+      result=null;
+    }
+    this.dirty=true;this.requestRedraw();
+    return result;
   }
   setEnabled(value) {
     this.enabled=value===true;
@@ -155,19 +204,20 @@ export class CapsuleNativeCanvas {
     this.requestRedraw();
   }
   addCapsule(){
-    const target=this.graphId;
-    const result=this.studio.createCapsule(target,"Новый контейнер");
-    const existing=this.studio.graph(target).instances.length-1;
-    this.positions[target]??={};
-    this.positions[target][result.instanceId]={x:1160+((existing%3)*310),y:230+Math.floor(existing/3)*220};
-    this.notice="Создан пустой вложенный граф (editor-only).";
-    this.save();this.dirty=true;this.requestRedraw();
-    return result;
+    return this.mutateWithPersistence(()=>{
+      const target=this.graphId;
+      const result=this.studio.createCapsule(target,"Новый контейнер");
+      const existing=this.studio.graph(target).instances.length-1;
+      this.positions[target]??={};
+      this.positions[target][result.instanceId]={x:1160+((existing%3)*310),y:230+Math.floor(existing/3)*220};
+      this.notice="Создан пустой вложенный граф (editor-only).";
+      return result;
+    });
   }
   extract(){
     if(!this.selected.size){this.notice="Сначала Shift+клик по заголовкам нод.";this.requestRedraw();return null;}
-    const parent=this.graphId;
-    try{
+    return this.mutateWithPersistence(()=>{
+      const parent=this.graphId;
       const chosen=Array.from(this.selected);
       const positions=chosen.map(id=>this.positions[parent]?.[id]||{x:1300,y:240});
       const result=extractSelection(this.studio,parent,chosen,"Извлечённый граф");
@@ -181,9 +231,8 @@ export class CapsuleNativeCanvas {
       });
       this.selected.clear();this.activePort=null;
       this.notice="Извлечены "+chosen.length+" нод, "+result.interfacePorts+" типизированных каналов.";
-      this.save();this.dirty=true;this.requestRedraw();
       return result;
-    }catch(error){this.notice="Извлечение отклонено: "+error.message;this.dirty=true;this.requestRedraw();return null;}
+    });
   }
   toggleSelect(id){
     this.studio.instance(this.graphId,id);
@@ -210,11 +259,13 @@ export class CapsuleNativeCanvas {
         }else{
           const from=first.port.direction==="output"?first:{nodeId,tag,port};
           const to=first.port.direction==="input"?first:{nodeId,tag,port};
-          const edge=this.studio.connect(this.graphId,{
-            fromId:from.nodeId,fromTag:from.tag,toId:to.nodeId,toTag:to.tag
+          this.mutateWithPersistence(()=>{
+            const edge=this.studio.connect(this.graphId,{
+              fromId:from.nodeId,fromTag:from.tag,toId:to.nodeId,toTag:to.tag
+            });
+            this.notice="Связь "+edge+" сохранена локально; не опубликована в Node-RED.";
+            return edge;
           });
-          this.notice="Связь "+edge+" сохранена локально; не опубликована в Node-RED.";
-          this.save();
         }
       }
     }catch(error){this.activePort=null;this.notice="Связь отклонена: "+error.message;}
@@ -223,8 +274,12 @@ export class CapsuleNativeCanvas {
   updatePosition(id,x,y,{persist=false}={}){
     this.studio.instance(this.graphId,id);
     this.positions[this.graphId]??={};
+    const before=this.positions[this.graphId][id];
     this.positions[this.graphId][id]={x:clamp(x,1100,0,8000),y:clamp(y,240,0,8000)};
-    if(persist)this.save();
+    if(persist && !this.save()){
+      if(before===undefined)delete this.positions[this.graphId][id];
+      else this.positions[this.graphId][id]=before;
+    }
     this.dirty=true;this.requestRedraw();
   }
   model(){
@@ -258,7 +313,14 @@ export class CapsuleNativeCanvas {
     const onUp=(e)=>{
       this.doc.removeEventListener("pointermove",onMove);
       this.doc.removeEventListener("pointerup",onUp);
-      if(this.drag?.moved){this.save();this.dirty=true;this.requestRedraw();}
+      if(this.drag?.moved){
+        if(!this.save()){
+          // Pointer motion is optimistic; a failed final write must restore
+          // the initial position to prevent a visually lost unsaved drag.
+          this.updatePosition(card.id,origin.x,origin.y);
+        }
+        this.dirty=true;this.requestRedraw();
+      }
       this.drag=null;
       e.stopPropagation();
     };
