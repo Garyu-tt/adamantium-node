@@ -155,3 +155,35 @@ test("malformed persisted draft does not overwrite it or grant execution",()=>{
   assert.equal(b.store.get(STORAGE),"{corrupt");
  }finally{c.close();}
 });
+
+test("dragging a native SVG card persists graph-scoped coordinates without changing flow model",()=>{
+ const o=modelWithOpenWire(),b=fakeBrowser(o.data);
+ const controller=mountNativeCapsuleWorkspace(b);
+ try{
+  const handle=b.stage.querySelector('[data-drag-handle="'+o.a+'"]');
+  assert.ok(handle);
+  handle.emit("pointerdown",{button:0,clientX:100,clientY:120});
+  b.windowRef.emit("pointermove",{clientX:185,clientY:165});
+  b.windowRef.emit("pointerup",{});
+  const saved=JSON.parse(b.store.get(STORAGE));
+  assert.equal(saved.positions[o.root][o.a].x,205);
+  assert.equal(saved.positions[o.root][o.a].y,245);
+  assert.deepEqual(saved.model,o.studio.snapshot());
+ }finally{controller.close();}
+});
+test("extract selection action moves selected native cards atomically into one recursive capsule",()=>{
+ const o=modelWithOpenWire(),b=fakeBrowser(o.data),controller=mountNativeCapsuleWorkspace(b);
+ try{
+  b.stage.querySelector('[data-drag-handle="'+o.a+'"]').emit("pointerdown",{shiftKey:true});
+  b.stage.querySelector('[data-drag-handle="'+o.b+'"]').emit("pointerdown",{shiftKey:true});
+  actionHit(b.stage,"Extract 2").emit("click");
+  assert.equal(controller.inspect().nodes,1);
+  const saved=JSON.parse(b.store.get(STORAGE));
+  const restored=CapsuleStudio.restore(saved.model);
+  const capsule=restored.graph(o.root).instances[0];
+  assert.equal(capsule.kind,"capsule");
+  assert.equal(restored.graph(capsule.childGraphId).instances.length,2);
+  assert.equal(restored.graph(capsule.childGraphId).edges.length,0);
+  assert.equal(controller.inspect().runtimeActivated,false);
+ }finally{controller.close();}
+});
