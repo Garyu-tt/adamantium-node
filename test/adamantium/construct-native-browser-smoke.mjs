@@ -59,7 +59,7 @@ try {
   const errors=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto(base+"/",{waitUntil:"domcontentloaded",timeout:60000});
-  await page.waitForSelector("#adamantium-construct-native-overlay",{timeout:60000});
+  await page.waitForSelector("#adamantium-construct-native-overlay",{state:"attached",timeout:60000});
   await page.evaluate(()=>document.body.focus());
   await page.keyboard.press("q");
   await page.waitForSelector("#adamantium-construct-native-overlay:not([hidden])",{timeout:15000});
