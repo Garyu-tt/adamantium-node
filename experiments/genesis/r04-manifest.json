@@ -1,0 +1,50 @@
+{
+  "schema": "mechanicus.genesis-r04-handoff/1",
+  "artifact": {
+    "name": "GENESIS_R04_delta.zip",
+    "format": "zip",
+    "encoding": "base64",
+    "sha256": "7ca84cef40bd1bce9b521c57d5835da23187a44dc400fe465e3ff0387726315b",
+    "size_bytes": 12832,
+    "b64_chars": 17112
+  },
+  "contents": {
+    "README.md": "6d70e90311215a7987a6e624982e80a3261ea19fe5061f90b132be3ada2de744",
+    "cli.cjs": "ec417420a4c11a61543e715276ee8ebda6fe7471b857560e688b75d47fb6cd1e",
+    "lib/acquired-store.cjs": "b3a845305bdb2c4720b5f908e19b206a63d716d6c86e9b4c2b985b6e138d7009",
+    "lib/revision-manager.cjs": "fbcf23f023d949a726b107e5e7948316c438d0e92a9aafa0868a5039f31b2130",
+    "lib/session-checkpoint.cjs": "db0df7f88176dca3fcea968d18d194bb585db6c46b7b695c5910f85af65cccc3",
+    "lib/session.cjs": "f87fd7cdd58142e547ebb8939f1ec6c684562af1cb8e5351df45227297c9a194",
+    "lib/typed-sensory.cjs": "89568595e71a0e7f5e1f809de7842116b832c83ad6eb37d0343c51ec5fe7cff9",
+    "package.json": "fd6e96dab8761b4181afe331cee5ca22a47e91e8491d6597c8d22871ea1607e8",
+    "test/r04.test.cjs": "f36854f3238404251791e28f63b348addf4a14a791615b97587b7c993e5fb643"
+  },
+  "vendored_from": {
+    "genesis_neural_circuit_r03": {
+      "README.md": "41f57d608fa335cf3b6d1a4edc926d67ffbccaea76d7308046e4e31ac4a94492",
+      "cli.cjs": "9d09bed9494bc2a68d470c93219cdeaabb4dc228100139afafa3f8f1a89ef6c0",
+      "examples/dante-v1-left.json": "971a878e5a093f22dc87220545e379998ccbb71341d4fd7b1b621b308e6a9f54",
+      "examples/lgn.json": "4cace7dac15956b4e2e9cfdc14d0aaa8f5d9c2eec44d49d09f04fe52157ccdff",
+      "examples/v2.json": "dcb8a03071d97f99fb2858d00a9715fd9048dcf549fe30e7e71e227a15a06d7c",
+      "lib/circuit.cjs": "2e73191c3c5148676f0b330b9809f00c43a22f8e89f4ee0f042589be048af1bd",
+      "lib/neural-engine.cjs": "cf20fe736a60043a93b47b418e6245a383a56a8a324d290aba26213184bad9ed",
+      "lib/region-contract.cjs": "a46238271d4d72f75766ab2da861aa9f138afc2fa7fb6da2a0016b618a69ed8c",
+      "package.json": "b8d5e6bc7b68ca3764f3f008aad313602fac7fca2f900410099b30b3217b9f65",
+      "test/circuit.test.cjs": "afb22321a562ff26a4389bdcbbaeeed04fc92ed555272163fab98a7400b40566"
+    }
+  },
+  "environment": {
+    "node": ">=22",
+    "cpu_first": true,
+    "hardware_access": false,
+    "operator_actions": [
+      "test-r04",
+      "run-r04-synthetic"
+    ]
+  },
+  "provenance": {
+    "local_tests": 26,
+    "r03_regression_tests": 15,
+    "note": "SHA256 integrity only. Not signed."
+  }
+}
