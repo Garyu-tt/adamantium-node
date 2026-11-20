@@ -39,5 +39,3 @@ test('mature learned tissue fails closed if 320 learned synapses would be lost b
  assert.equal(p.circuit.checkpoint().sha256,prior);
  assert.equal(p.circuit.summary().genomes_unchanged,true);
 });
-
-```
