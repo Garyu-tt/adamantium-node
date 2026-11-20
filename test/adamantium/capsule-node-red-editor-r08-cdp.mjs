@@ -98,7 +98,14 @@ try{
   // launch update telemetry. Other dialogs are not dismissed or clicked.
   const intro=await evaluate('(function(){const dialog=[...document.querySelectorAll(".red-ui-popover.red-ui-dialog")].find(d=>getComputedStyle(d).display!=="none"&&d.textContent?.includes("Enable Update Notifications"));if(!dialog)return "none";const no=[...dialog.querySelectorAll("button")].find(b=>b.textContent.trim()==="No, do not enable notifications");if(!no)throw Error("Cannot safely decline first-launch notifications");no.click();return "declined-test-profile-only";})()');
   if(intro!=="none")await sleep(250);
-  const overlayBlock=await evaluate('(function(){const el=document.querySelector(".adamantium-native-capsule-card [data-drag-handle]");const rect=el?.getBoundingClientRect();return {hit:rect?document.elementFromPoint(rect.left+Math.min(40,rect.width*.3),rect.top+Math.min(20,rect.height*.4))?.getAttribute("data-drag-handle"):null,shade:[...document.querySelectorAll(".red-ui-shade")].some(e=>getComputedStyle(e).display!=="none")};})()');
+  const tour=await evaluate('(function(){const pop=[...document.querySelectorAll(".red-ui-tourGuide-popover")].find(e=>getComputedStyle(e).display!=="none");if(!pop)return "none";if(!pop.textContent.includes("Welcome to Node-RED 5.0!"))throw Error("Unexpected tour overlay in test editor");const close=pop.querySelector("button[aria-label=Закрыть],button[aria-label=Close]");if(!close)throw Error("No safe tour close action");close.click();return "closed-disposable-tour";})()');
+  if(tour!=="none")await sleep(500);
+  let overlayBlock=null;
+  for(let i=0;i<20;i++){
+    overlayBlock=await evaluate('(function(){const el=document.querySelector(".adamantium-native-capsule-card [data-drag-handle]");const rect=el?.getBoundingClientRect();return {hit:rect?document.elementFromPoint(rect.left+Math.min(40,rect.width*.3),rect.top+Math.min(20,rect.height*.4))?.getAttribute("data-drag-handle"):null,shade:[...document.querySelectorAll(".red-ui-shade,.red-ui-tourGuide-shade")].some(e=>getComputedStyle(e).display!=="none")};})()');
+    if(!overlayBlock.shade&&overlayBlock.hit)break;
+    await sleep(200);
+  }
   if(overlayBlock.shade||!overlayBlock.hit)
     throw Error("Node-RED overlay blocks real SVG drag; refusing blind clicks "+JSON.stringify(overlayBlock));
   // R08: actual Node-RED zoom action, then actual Chrome pointer events.
