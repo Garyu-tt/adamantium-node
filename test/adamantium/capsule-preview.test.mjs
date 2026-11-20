@@ -27,6 +27,9 @@ test("Capsule Studio preview serves only static editor assets on loopback",async
     const model=await fetch(base+"/capsule-studio.mjs");
     assert.equal(model.status,200);
     assert.match(await model.text(),/export class CapsuleStudio/);
+    const construct=await fetch(base+"/construct-engine.mjs");
+    assert.equal(construct.status,200);
+    assert.match(await construct.text(),/export class ConstructEngine/);
     const app=await fetch(base+"/app.mjs");
     assert.equal(app.status,200);
     assert.match(await app.text(),/new CapsuleStudio/);
