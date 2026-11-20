@@ -64,6 +64,8 @@ export async function observe(origin,credentialText,{
  return result;
 }
 export async function persistObservation(path,observation){
+ check(process.platform!=="win32",
+       "private snapshot writer requires POSIX 0600; Windows ACL support is not yet implemented");
  check(typeof path==="string" && path.startsWith("/") && !path.includes("\0"),
        "absolute output path required");
  check(observation?.format===OBSERVER_SNAPSHOT,"invalid output snapshot");
