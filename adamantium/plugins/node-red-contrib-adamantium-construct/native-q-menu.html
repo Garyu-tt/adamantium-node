@@ -1,0 +1,318 @@
+<style>
+
+#adamantium-construct-native-overlay[hidden]{display:none!important}
+#adamantium-construct-native-overlay{
+position:fixed;inset:0;z-index:6000;background:rgba(0,0,0,.55);
+display:flex;justify-content:center;align-items:flex-start;padding:6vh 14px 14px;
+font:inherit;color:var(--red-ui-primary-text-color,inherit)
+}
+#adamantium-construct-native-overlay .adamantium-construct-window{
+width:min(850px,96vw);max-height:88vh;overflow:auto;
+background:var(--red-ui-primary-background-color,Canvas);
+color:var(--red-ui-primary-text-color,CanvasText);
+border:1px solid var(--red-ui-secondary-border-color,currentColor);
+border-radius:12px;padding:16px;display:grid;gap:12px;
+box-shadow:0 15px 60px rgba(0,0,0,.25);
+}
+#adamantium-construct-native-overlay h2{font-size:18px;margin:0 0 4px}
+#adamantium-construct-native-overlay p{margin:0;opacity:.85}
+#adamantium-construct-native-overlay small{font-size:12px;opacity:.75}
+#adamantium-construct-native-overlay button{
+background:var(--red-ui-secondary-background-color,transparent);
+color:inherit;border:1px solid var(--red-ui-secondary-border-color,currentColor);
+border-radius:7px;padding:7px 10px;cursor:pointer}
+#adamantium-construct-native-overlay button:hover,
+#adamantium-construct-native-overlay button.selected{
+outline:1px solid var(--red-ui-primary-text-color,currentColor)}
+#adamantium-construct-native-overlay input:not([type=checkbox]),
+#adamantium-construct-native-overlay select{
+padding:8px;border-radius:7px;min-width:0;flex:1;
+border:1px solid var(--red-ui-secondary-border-color,currentColor);
+background:var(--red-ui-secondary-background-color,transparent);color:inherit}
+#adamantium-construct-native-overlay .adamantium-construct-titlebar,
+#adamantium-construct-native-overlay .adamantium-construct-inputs,
+#adamantium-construct-native-overlay .adamantium-construct-tabs,
+#adamantium-construct-native-overlay .adamantium-construct-utilities,
+#adamantium-construct-native-overlay .adamantium-construct-options{
+display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+#adamantium-construct-native-overlay .adamantium-construct-titlebar{justify-content:space-between}
+#adamantium-construct-native-overlay .adamantium-construct-cards{
+display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;
+max-height:42vh;overflow:auto}
+#adamantium-construct-native-overlay .adamantium-construct-card{
+border:1px solid var(--red-ui-secondary-border-color,currentColor);border-radius:9px;
+padding:10px;display:grid;gap:8px;align-content:space-between}
+#adamantium-construct-native-overlay .adamantium-construct-card strong,
+#adamantium-construct-native-overlay .adamantium-construct-card small{display:block}
+#adamantium-construct-native-overlay .adamantium-construct-status[data-error=true]{color:var(--red-ui-error-color,inherit)}
+@media(max-width:640px){
+#adamantium-construct-native-overlay{padding:0}
+#adamantium-construct-native-overlay .adamantium-construct-window{width:100vw;max-height:100vh;border-radius:0}
+#adamantium-construct-native-overlay .adamantium-construct-cards{max-height:30vh}
+}
+</style>
+<script type="text/javascript">
+(function(){
+"use strict";
+const PLUGIN="adamantium-construct-native-r02";
+const ACTION="adamantium:show-native-construct";
+const KEY="adamantium.native-q-library.r02";
+const ASSET="resources/node-red-contrib-adamantium-construct/core.mjs";
+const ROOT="adamantium-construct-native-overlay";
+RED.plugins.registerPlugin(PLUGIN,{
+  type:"adamantium-editor-overlay",
+  onadd:function(){
+    if(document.getElementById(ROOT))return;
+    const overlay=document.createElement("div");
+    overlay.id=ROOT;overlay.hidden=true;
+    // Static markup only. User names enter the DOM through textContent.
+    overlay.innerHTML=[
+      "<section class='adamantium-construct-window' role='dialog' aria-modal='true' aria-labelledby='ada-native-title'>",
+      "<div class='adamantium-construct-titlebar'><div><h2 id='ada-native-title'>Adamantium Construct · Q</h2>",
+      "<p>Нативный конструктор Node-RED · изменения ожидают Deploy</p></div>",
+      "<button type='button' id='ada-native-close' aria-label='Закрыть конструктор'>✕</button></div>",
+      "<div class='adamantium-construct-inputs'>",
+      "<input id='ada-native-search' aria-label='Поиск' placeholder='Найти сборку, пресет или ссылку…' autocomplete='off'>",
+      "<select id='ada-native-stamp' aria-label='Количество копий'>",
+      "<option value='1'>1 сборка</option><option value='2'>2 сборки</option><option value='4'>4 сборки</option></select></div>",
+      "<nav class='adamantium-construct-tabs' aria-label='Категории'>",
+      "<button data-ada-tab='builtin' class='selected' type='button'>Готовые</button>",
+      "<button data-ada-tab='snapshot' type='button'>Мои снимки</button>",
+      "<button data-ada-tab='subflow' type='button'>Общие подграфы</button>",
+      "<button data-ada-tab='reference' type='button'>Ссылки</button></nav>",
+      "<div id='ada-native-cards' class='adamantium-construct-cards' aria-live='polite'></div>",
+      "<div class='adamantium-construct-utilities'>",
+      "<input id='ada-native-title-input' aria-label='Название сохранения' placeholder='Название новой сборки…'>",
+      "<button type='button' id='ada-native-save'>Сохранить выделенное</button>",
+      "<button type='button' id='ada-native-copy'>Копировать выделенное</button>",
+      "<button type='button' id='ada-native-link'>Ссылка на выделенное</button>",
+      "<button type='button' id='ada-native-delete'>Удалить выделенное</button></div>",
+      "<div class='adamantium-construct-options'>",
+      "<label><input id='ada-native-auto-tab' type='checkbox'> При новой вкладке автоматически создать сборку</label>",
+      "<select id='ada-native-auto-preset' aria-label='Сборка для новой вкладки'></select>",
+      "<button type='button' id='ada-native-capsules'>Открыть Capsule Studio</button></div>",
+      "<div id='ada-native-status' class='adamantium-construct-status' role='status'></div>",
+      "<small>Копия ≠ общий объект. Subflow — общее определение с отдельным состоянием; ссылка — переход к исходной ноде.</small>",
+      "</section>"
+    ].join("");
+    document.body.appendChild(overlay);
+    const $=id=>overlay.querySelector("#"+id);
+    const cards=$("ada-native-cards");
+    let loaded=null,library=null,tab="builtin",lastFocus=null,working=false,autoBusy=false,corePromise=null;
+    const pending=new Set();
+    const showError=error=>{
+      const value=error?.message||String(error);
+      $("ada-native-status").textContent=value;
+      $("ada-native-status").dataset.error="true";
+    };
+    const status=value=>{
+      $("ada-native-status").textContent=value;
+      $("ada-native-status").dataset.error="false";
+    };
+    function getCore(){
+      if(!corePromise)corePromise=import(new URL(ASSET,document.baseURI).href);
+      return corePromise;
+    }
+    function restored(raw){
+      try{return loaded.restoreLibrary(JSON.parse(raw));}
+      catch{return loaded.freshLibrary();}
+    }
+    async function ensureLoaded(){
+      if(loaded)return;
+      loaded=await getCore();
+      let data=null;try{data=window.localStorage.getItem(KEY);}catch{}
+      library=restored(data);
+      for(const preset of loaded.BUILTINS){
+        const option=document.createElement("option");
+        option.value=preset.id;option.textContent=preset.title;
+        $("ada-native-auto-preset").appendChild(option);
+      }
+    }
+    function store(next){
+      const checked=loaded.restoreLibrary(next);
+      // No silent loss of the previous in-memory library when browser storage fails.
+      window.localStorage.setItem(KEY,JSON.stringify(checked));
+      library=checked;
+    }
+    function writable(){
+      if(typeof RED.workspaces?.isLocked==="function"&&RED.workspaces.isLocked())
+        throw new TypeError("Вкладка заблокирована для изменений");
+      const z=RED.workspaces?.active?.();
+      if(!z||!RED.nodes?.workspace?.(z)||RED.nodes.workspace(z).locked)
+        throw new TypeError("Выбери незаблокированную вкладку Flow");
+      if(RED.user?.hasPermission&&!RED.user.hasPermission("flows.write"))
+        throw new TypeError("Нет права flows.write");
+      return z;
+    }
+    function selection(){
+      const nodes=RED.view?.selection?.()?.nodes||[];
+      if(!Array.isArray(nodes)||!nodes.length)throw new TypeError("Выдели ноды на основном canvas");
+      return nodes;
+    }
+    function items(){
+      const q=$("ada-native-search").value.toLowerCase().trim(),found=[];
+      if(tab==="builtin")for(const item of loaded.BUILTINS)found.push({...item,kind:"builtin"});
+      if(tab==="snapshot")for(const item of library.snapshots)found.push({...item,kind:"snapshot"});
+      if(tab==="subflow")RED.nodes.eachSubflow(sf=>{
+        if(sf?.id&&RED.nodes.getType("subflow:"+sf.id))found.push({
+          id:sf.id,title:sf.name||sf.id,
+          description:"Общая реализация; отдельное состояние каждого экземпляра",kind:"subflow"
+        });
+      });
+      if(tab==="reference")for(const item of library.references)found.push({...item,kind:"reference"});
+      return found.filter(e=>(e.title+" "+(e.description||"")).toLowerCase().includes(q)).slice(0,120);
+    }
+    async function placeBlueprint(item,automatic=false){
+      const z=writable();
+      await ensureLoaded();
+      let nodes;
+      if(item.kind==="subflow"){
+        if(!RED.nodes.getType("subflow:"+item.id))throw new TypeError("Общее определение Subflow отсутствует");
+        nodes=loaded.makeSubflowPlacement(item.id,z);
+      }else{
+        const blueprint=loaded.validateBlueprint(item.blueprint);
+        for(const n of blueprint.nodes){
+          if(!RED.nodes.getType(n.type))throw new TypeError("Тип ноды отсутствует: "+n.type);
+        }
+        const copies=automatic?1:Number($("ada-native-stamp").value);
+        nodes=loaded.preparePlacement(loaded.stampBlueprint(blueprint,copies),z);
+      }
+      if(!automatic)close();
+      const result=RED.view.importNodes(nodes,{
+        generateIds:true,generateDefaultNames:true,touchImport:automatic,notify:!automatic,
+        eventContext:{source:"adamantium-construct-native-r02",origin:item.id,mode:item.kind}
+      });
+      if(!result?.nodeMap||Object.keys(result.nodeMap).length===0)
+        throw new TypeError("Node-RED не подтвердил добавление нод");
+      if(automatic)status("Автосборка на новой вкладке создана; Deploy не выполнялся");
+      return result;
+    }
+    function button(label,callback){
+      const element=document.createElement("button");
+      element.type="button";element.textContent=label;
+      element.addEventListener("click",()=>{Promise.resolve().then(callback).catch(showError);});
+      return element;
+    }
+    function render(){
+      if(!loaded||!library)return;
+      for(const b of overlay.querySelectorAll("[data-ada-tab]"))
+        b.classList.toggle("selected",b.dataset.adaTab===tab);
+      cards.replaceChildren();
+      const entries=items();
+      if(!entries.length){
+        const empty=document.createElement("p");empty.textContent="Ничего не найдено";cards.appendChild(empty);
+      }
+      for(const item of entries){
+        const card=document.createElement("article");card.className="adamantium-construct-card";
+        const content=document.createElement("div");
+        const name=document.createElement("strong"),details=document.createElement("small");
+        name.textContent=item.title;
+        details.textContent=item.description||(
+          item.kind==="snapshot"?"Локальный независимый снимок":
+          item.kind==="reference"?"Переход к существующей ноде":"");
+        content.append(name,details);
+        card.appendChild(content);
+        card.appendChild(button(item.kind==="reference"?"Перейти":
+          item.kind==="subflow"?"Экземпляр":"Разместить",async()=>{
+          if(item.kind==="reference"){
+            if(!RED.nodes.node(item.nodeId)){status("Исходная нода отсутствует. Ссылка не создаёт копию.");return;}
+            close();RED.view.reveal(item.nodeId,false);return;
+          }
+          await placeBlueprint(item);
+        }));
+        cards.appendChild(card);
+      }
+      status(entries.length+" элементов · сохранение только локально");
+    }
+    async function open(){
+      if(working)return;
+      working=true;
+      try{
+        await ensureLoaded();
+        lastFocus=document.activeElement;
+        overlay.hidden=false;render();$("ada-native-search").focus();
+      }catch(error){showError(error);}
+      finally{working=false;}
+    }
+    function close(){
+      overlay.hidden=true;
+      if(lastFocus?.isConnected&&typeof lastFocus.focus==="function")lastFocus.focus();
+    }
+    async function saveSelected(){
+      await ensureLoaded();
+      const z=writable(),selected=selection();
+      if(selected.some(n=>n.z!==z))throw new TypeError("Сохраняй только ноды активного Flow");
+      const name=$("ada-native-title-input").value.trim();
+      if(!name)throw new TypeError("Укажи имя сборки");
+      const blueprint=loaded.captureSelection(selected.map(n=>RED.nodes.convertNode(n,{credentials:false})));
+      if(!window.confirm("Сохранить локальный снимок? Он может включать текст и настройки. Учётные данные Node-RED исключены."))return;
+      store(loaded.addSnapshot(library,name,blueprint));
+      $("ada-native-title-input").value="";tab="snapshot";render();
+    }
+    async function cloneSelected(){
+      await ensureLoaded();
+      const z=writable(),selected=selection();
+      if(selected.some(n=>n.z!==z))throw new TypeError("Выделенные ноды должны быть в одном Flow");
+      const blueprint=loaded.captureSelection(selected.map(n=>RED.nodes.convertNode(n,{credentials:false})));
+      await placeBlueprint({id:"selection",kind:"snapshot",blueprint});
+    }
+    async function linkSelected(){
+      await ensureLoaded();
+      const nodes=selection();
+      if(nodes.length!==1)throw new TypeError("Ссылка указывает ровно на одну ноду");
+      const title=$("ada-native-title-input").value.trim()||nodes[0].name||nodes[0].type;
+      store(loaded.addReference(library,title,nodes[0].z,nodes[0].id));
+      tab="reference";render();
+    }
+    function deleteSelected(){
+      writable();selection();
+      if(!window.confirm("Удалить выделенное из Flow? Остаётся Undo, Deploy не выполняется."))return;
+      close();RED.actions.invoke("core:delete-selection");
+    }
+    async function autoNewTab(flowId){
+      if(!pending.has(flowId)||autoBusy||!$("ada-native-auto-tab").checked)return;
+      if(RED.workspaces.active()!==flowId)return;
+      pending.delete(flowId);autoBusy=true;
+      try{
+        await ensureLoaded();
+        if(RED.workspaces.active()!==flowId)return;
+        if((RED.nodes.filterNodes({z:flowId})||[]).length!==0)return;
+        const preset=loaded.BUILTINS.find(p=>p.id===$("ada-native-auto-preset").value);
+        if(!preset)throw new TypeError("Неверный автоматический шаблон");
+        await placeBlueprint({...preset,kind:"builtin"},true);
+      }catch(error){showError(error);}
+      finally{autoBusy=false;}
+    }
+    $("ada-native-close").addEventListener("click",close);
+    overlay.addEventListener("pointerdown",e=>{if(e.target===overlay)close();});
+    $("ada-native-search").addEventListener("input",render);
+    $("ada-native-stamp").addEventListener("change",render);
+    for(const item of overlay.querySelectorAll("[data-ada-tab]"))
+      item.addEventListener("click",()=>{tab=item.dataset.adaTab;render();});
+    $("ada-native-save").addEventListener("click",()=>{saveSelected().catch(showError);});
+    $("ada-native-copy").addEventListener("click",()=>{cloneSelected().catch(showError);});
+    $("ada-native-link").addEventListener("click",()=>{linkSelected().catch(showError);});
+    $("ada-native-delete").addEventListener("click",()=>{try{deleteSelected();}catch(e){showError(e);}});
+    $("ada-native-capsules").addEventListener("click",()=>{close();RED.actions.invoke("adamantium:show-capsule-studio");});
+    $("ada-native-auto-tab").addEventListener("change",()=>{
+      pending.clear();
+      status($("ada-native-auto-tab").checked?"Автостроительство включено до закрытия страницы; существующие вкладки не меняются.":"Автостроительство выключено.");
+    });
+    document.addEventListener("keydown",event=>{
+      if(event.key==="Escape"&&!overlay.hidden){event.preventDefault();close();return;}
+      if(event.key.toLowerCase()!=="q"||event.repeat||event.ctrlKey||event.altKey||event.metaKey)return;
+      if(event.target?.closest?.("input,textarea,select,[contenteditable],.ui-dialog,[role=dialog]"))return;
+      if(!overlay.hidden)return;
+      event.preventDefault();open();
+    });
+    RED.actions.add(ACTION,()=>{open();});
+    RED.events.on("flows:add",flow=>{
+      if($("ada-native-auto-tab").checked&&flow?.id&&pending.size<32)pending.add(flow.id);
+    });
+    RED.events.on("workspace:change",event=>{
+      if(pending.has(event?.workspace))Promise.resolve().then(()=>autoNewTab(event.workspace));
+    });
+  }
+});
+})();
+</script>
