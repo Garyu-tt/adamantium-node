@@ -17,7 +17,9 @@ const allowed=new Set([
   "/adamantium/capsule-native-canvas.mjs",
   "/adamantium/capsule-native-layout.mjs",
   "/adamantium/capsule-studio.mjs",
-  "/adamantium/capsule-extract.mjs"
+  "/adamantium/capsule-extract.mjs",
+  "/adamantium/capsule-draft-storage.mjs",
+  "/adamantium/capsule-native-pointer.mjs"
 ]);
 async function chromium(binary,uri,profile){
   const args=[
