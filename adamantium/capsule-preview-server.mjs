@@ -12,7 +12,8 @@ const fileMap={
   "/":new URL("./capsule-preview/index.html",import.meta.url),
   "/index.html":new URL("./capsule-preview/index.html",import.meta.url),
   "/app.mjs":new URL("./capsule-preview/app.mjs",import.meta.url),
-  "/capsule-studio.mjs":new URL("./capsule-studio.mjs",import.meta.url)
+  "/capsule-studio.mjs":new URL("./capsule-studio.mjs",import.meta.url),
+  "/capsule-extract.mjs":new URL("./capsule-extract.mjs",import.meta.url)
 };
 const server=createServer(async(req,res)=>{
   res.setHeader("Cache-Control","no-store");
