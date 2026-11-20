@@ -1,0 +1,38 @@
+name: Adamantium Construct R01
+on:
+  push:
+    branches:
+      - feature/adamantium-construct-r01-qmenu-graph-mutations
+  pull_request:
+    paths:
+      - "adamantium/construct-engine.mjs"
+      - "adamantium/capsule-preview/**"
+      - "adamantium/plugins/node-red-contrib-adamantium-capsules/**"
+      - "test/adamantium/**"
+      - ".github/workflows/adamantium-construct-r01.yml"
+jobs:
+  construct-isolated:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [22, 24]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Check source modules
+        run: |
+          node --check adamantium/construct-engine.mjs
+          node --check adamantium/capsule-preview/app.mjs
+          node --check adamantium/capsule-preview-server.mjs
+      - name: Isolated tests (no npm install, no deploy)
+        run: >
+          node --test
+          test/adamantium/capsule-studio.test.mjs
+          test/adamantium/capsule-extract.test.mjs
+          test/adamantium/capsule-plugin.test.mjs
+          test/adamantium/capsule-preview.test.mjs
+          test/adamantium/construct-engine.test.mjs
