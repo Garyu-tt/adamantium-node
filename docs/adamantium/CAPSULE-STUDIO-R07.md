@@ -40,7 +40,7 @@ The native SVG draft lens provides:
 - Designed to safely render up to 1200 visible nodes in one graph. More must be viewed through a narrower query/filter/paged renderer. This limit does not change the underlying Graph IR budgets.
 - Pointer-drag and click-to-connect were tested via Node.js SVG DOM mocks; real browser acceptance and deployment to live Node-RED are distinct QA gates.
 - No native flow reload will implicitly change or activate this draft graph. The opaque overlay is removed by the Close button or sidebar toggle.
-- Native flow shortcuts may remain available while draft overlay is open; an independent editor-level exclusive interaction mode must be implemented before replacing the production workspace.
+- The R07 native SVG layer now intercepts editor pointer events and common destructive keyboard shortcuts (including Delete) while its draft overlay is active, and removes its capturing listener on Close. Browser/extension/OS shortcuts and other editor-specific handlers still require independent real-browser QA before production use.
 
 ## Verification (20 November 2026)
 
