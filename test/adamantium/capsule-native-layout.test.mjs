@@ -44,11 +44,13 @@ test("output and input anchors produce side-specific cubic wire geometry",()=>{
  assert.match(wire.path,/^M [0-9.]+ [0-9.]+ C /);
 });
 test("collapsed rail never merges hidden typed port IDs, expandable rails reveal all",()=>{
- const {studio,root,def}=make();
+ const studio=new CapsuleStudio(),root=studio.createGraph("Root");
+ const wide=studio.createDefinition({name:"Wide",language:"rust",source:"// 9 distinct ports",
+  ports:Array.from({length:9},(_,i)=>port("out_"+i,"output"))});
  const c=studio.createCapsule(root,"Wide");
- const inside=studio.place(c.graphId,def.id);
+ const inside=studio.place(c.graphId,wide.id);
  for(let i=0;i<9;i++){
-  studio.expose(c.graphId,{side:"east",instanceId:inside,tag:"out",externalTag:"out_"+i});
+  studio.expose(c.graphId,{side:"east",instanceId:inside,tag:"out_"+i,externalTag:"out_"+i});
  }
  const collapsed=layoutCapsuleGraph(studio,root);
  const node=collapsed.nodes[0];
