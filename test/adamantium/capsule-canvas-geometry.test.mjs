@@ -102,13 +102,13 @@ test("hidden overflow links are still validated instead of silently skipping for
  });
  const sinkDef=studio.createDefinition({
    name:"Sink",language:"python",source:"pass",
-   ports:[P("input","input"),P("alsoOutput","output")]
+   ports:[P("input","input"),P("also_output","output")]
  });
  const sink=studio.place(root,sinkDef.id);
  studio.connect(root,{fromId:cap.instanceId,fromTag:"out5",toId:sink,toTag:"input"});
  assert.equal(layoutCapsuleCanvas(studio,root).hiddenLinks,1);
  // This edge has a valid endpoint name but a forbidden output→output link.
- studio.graph(root).edges[0].toTag="alsoOutput";
+ studio.graph(root).edges[0].toTag="also_output";
  assert.throws(()=>layoutCapsuleCanvas(studio,root),/typed edge mismatch/);
  studio.graph(root).edges[0].toTag="input";
  // Semantics on a hidden port cannot become a permission route.
