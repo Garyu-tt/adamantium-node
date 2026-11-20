@@ -118,3 +118,23 @@ test("strictly prevents unauthorized authority claims and bad revisions",()=>{
  const claims=structuredClone(good);claims.approved=true;
  assert.throws(()=>inspectCapsuleIRProposal(claims),/forbidden authority/);
 });
+
+test("rejects extra fields in IR nodes or proposal envelope that could smuggle source code or permissions",()=>{
+ const {studio}=example();
+ const safe=createCapsuleIRProposal(studio);
+ const extra=structuredClone(safe);
+ extra.graphs[0].nodes[0].source="secret_must_not_be_here";
+ assert.throws(()=>inspectCapsuleIRProposal(extra),/unknown\/missing fields/);
+ const fakeGrant=structuredClone(safe);
+ fakeGrant.masGrant="execute-all";
+ assert.throws(()=>inspectCapsuleIRProposal(fakeGrant),/unknown\/missing fields/);
+ const badEdge=structuredClone(safe);
+ badEdge.graphs[0].edges[0].secretToken="hidden";
+ assert.throws(()=>inspectCapsuleIRProposal(badEdge),/unknown\/missing fields/);
+});
+test("unverified definition handles cannot hide mismatched port counts",()=>{
+ const {studio}=example();
+ const safe=createCapsuleIRProposal(studio);
+ safe.definitionHandles[0].portCount=0;
+ assert.throws(()=>inspectCapsuleIRProposal(safe),/definition port count mismatch/);
+});
