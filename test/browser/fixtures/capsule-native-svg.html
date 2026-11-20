@@ -1,0 +1,55 @@
+<!doctype html><html><head><meta charset="utf-8"><title>R07 browser QA</title></head><body>
+<svg id="workspace" width="3100" height="1600" xmlns="http://www.w3.org/2000/svg">
+<g id="link-layer"><g class="red-ui-flow-link" id="native-original-link"></g></g>
+<g id="node-layer"><g class="red-ui-flow-node-group" id="native-original-node"></g></g></svg><pre id="status">BOOT</pre>
+<script type="module">
+import {CapsuleStudio} from "/adamantium/capsule-studio.mjs";
+import {CapsuleNativeCanvas,STORAGE_KEY} from "/adamantium/capsule-native-canvas.mjs";
+try {
+ const studio=new CapsuleStudio(),root=studio.createGraph("QA");
+ const d1=studio.createDefinition({name:"Source",language:"rust",source:"SECRET_SOURCE_NOT_FOR_SVG",
+   ports:[{tag:"out",direction:"output",dataType:"core.json@1",semantics:"data"}]});
+ const d2=studio.createDefinition({name:"Sink",language:"python",source:"pass",
+   ports:[{tag:"in",direction:"input",dataType:"core.json@1",semantics:"data"}]});
+ const a=studio.place(root,d1.id),b=studio.place(root,d2.id);
+ const cap=studio.createCapsule(root,"Four-way");
+ const inner=studio.place(cap.graphId,d1.id);
+ for(const side of ["north","east","south","west"]){
+   studio.expose(cap.graphId,{side,instanceId:inner,tag:"out",externalTag:side+"_out"});
+ }
+ localStorage.setItem(STORAGE_KEY,JSON.stringify({model:studio.snapshot(),positions:{
+   [root]:{[a]:{x:120,y:120},[cap.instanceId]:{x:420,y:120},[b]:{x:800,y:120}}
+ }}));
+ const nodeLayer=document.getElementById("node-layer");
+ const linkLayer=document.getElementById("link-layer");
+ let canvas;
+ const draw=()=>canvas.redraw({nodeLayer,linkLayer,workspaceId:"flow_A"});
+ canvas=new CapsuleNativeCanvas({doc:document,storage:localStorage,
+   requestRedraw:draw,getWorkspaceId:()=>"flow_A"});
+ canvas.setEnabled(true);
+ const before={cards:document.querySelectorAll(".adamantium-capsule-native-card").length,
+   wires:document.querySelectorAll(".adamantium-capsule-native-wire").length,
+   sides:[...document.querySelectorAll('.adamantium-capsule-native-card[data-kind="capsule"] .adamantium-capsule-native-port')]
+      .map(p=>p.getAttribute("data-side")).sort()};
+ const output=document.querySelector('.adamantium-capsule-native-port[data-node-id="'+a+'"][data-port-tag="out"]');
+ if(!output)throw Error("output port missing");
+ output.dispatchEvent(new MouseEvent("click",{bubbles:true}));
+ const input=document.querySelector('.adamantium-capsule-native-port[data-node-id="'+b+'"][data-port-tag="in"]');
+ if(!input)throw Error("input port missing");
+ input.dispatchEvent(new MouseEvent("click",{bubbles:true}));
+ const after={
+   wires:document.querySelectorAll(".adamantium-capsule-native-wire").length,
+   savedEdges:JSON.parse(localStorage.getItem(STORAGE_KEY)).model.graphs[root].edges.length,
+   sourceLeaked:document.getElementById("workspace").outerHTML.includes("SECRET_SOURCE_NOT_FOR_SVG"),
+   nativeNodePresent:!!document.getElementById("native-original-node"),
+   nativeLinkPresent:!!document.getElementById("native-original-link"),
+   runtimeActivated:canvas.model().runtimeActivated
+ };
+ const pass=before.cards===3&&before.wires===0&&
+   JSON.stringify(before.sides)===JSON.stringify(["east","north","south","west"])&&
+   after.wires===1&&after.savedEdges===1&&!after.sourceLeaked&&
+   after.nativeNodePresent&&after.nativeLinkPresent&&!after.runtimeActivated;
+ document.body.dataset.result=pass?"pass":"fail";
+ document.getElementById("status").textContent=JSON.stringify({pass,before,after});
+}catch(err){document.body.dataset.result="error";document.getElementById("status").textContent=err.stack||err.message;}
+</script></body></html>
