@@ -33,7 +33,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
       - name: Independently signed anchor security and witness continuity tests
-        run: node --test test/adamantium/node-factory-anchor-r08.test.mjs
+        run: node --test test/adamantium/node-factory-anchor-r08.test.mjs test/adamantium/node-factory-anchor-studio-r08.test.mjs
   anchor-real-runtime:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 18
