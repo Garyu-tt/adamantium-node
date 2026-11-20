@@ -54,7 +54,7 @@ const find=(root,predicate)=>{
   scan(root);return result;
 };
 const cls=(root,name)=>find(root,n=>n.getAttribute("class")?.split(" ").includes(name));
-function fixture(raw,{workspaceId=null}={}){
+function fixture(raw,{workspaceId=null,failWrites=false,notifyFails=false}={}){
   const document=new FakeDoc(),root=document.createElementNS(NS,"svg");
   const nodeLayer=document.createElementNS(NS,"g"),linkLayer=document.createElementNS(NS,"g");
   root.appendChild(linkLayer);root.appendChild(nodeLayer);
@@ -62,13 +62,14 @@ function fixture(raw,{workspaceId=null}={}){
   if(raw)backing.set(STORAGE_KEY,JSON.stringify(raw));
   const storage={
     getItem:key=>backing.get(key)||null,
-    setItem:(key,val)=>backing.set(key,val)
+    setItem:(key,val)=>{if(failWrites)throw new Error("browser quota exceeded");backing.set(key,val);}
   };
   let canvas,redraws=0,activeWorkspaceId=workspaceId;
   const render=()=>{
     redraws++;canvas.redraw({nodeLayer,linkLayer,workspaceId:activeWorkspaceId});
   };
   canvas=new CapsuleNativeCanvas({doc:document,storage,requestRedraw:render,
+    onUpdate:()=>{if(notifyFails)throw new Error("nonessential notification failed");},
     getWorkspaceId:workspaceId===null?undefined:()=>activeWorkspaceId});
   return {document,nodeLayer,linkLayer,root,canvas,render,backing,
     setWorkspace:(id)=>{activeWorkspaceId=id;render();},
@@ -205,4 +206,54 @@ test("SVG capsule lens remains bound to one native Node-RED workspace tab",()=>{
  f.canvas.setEnabled(true);
  assert.equal(cls(f.nodeLayer,"adamantium-capsule-native-card").length,3,
    "explicitly activating SVG in the new tab rebinds the lens");
+});
+
+test("browser write failure atomically restores addCapsule and extracted graph edits",()=>{
+  const {snapshot,a}=makeModel();
+  const f=fixture(snapshot,{failWrites:true});
+  const graphId=f.canvas.graphId;
+  const before=f.canvas.studio.snapshot();
+  const originalPositions=JSON.stringify(f.canvas.positions);
+  const result=f.canvas.addCapsule();
+  assert.equal(result,null);
+  assert.deepEqual(f.canvas.studio.snapshot(),before);
+  assert.equal(JSON.stringify(f.canvas.positions),originalPositions);
+  assert.match(f.canvas.notice,/Изменения отменены/);
+  f.canvas.selected.add(a);
+  assert.equal(f.canvas.extract(),null);
+  assert.deepEqual(f.canvas.studio.snapshot(),before);
+  assert.equal(JSON.stringify(f.canvas.positions),originalPositions);
+});
+test("failed browser commit does not leave phantom typed edges or port connections",()=>{
+  const {snapshot,root,a,b}=makeModel();
+  const f=fixture(snapshot,{failWrites:true});
+  const before=f.canvas.studio.snapshot();
+  f.canvas.pickPort(a,"result");
+  f.canvas.pickPort(b,"data");
+  assert.equal(f.canvas.studio.graph(root).edges.length,0);
+  assert.deepEqual(f.canvas.studio.snapshot(),before);
+  assert.match(f.canvas.notice,/Изменения отменены/);
+});
+test("a failed release of optimistic drag restores original layout coordinates",()=>{
+  const f=fixture(null,{failWrites:true});f.canvas.setEnabled(true);
+  const model=f.canvas.model(),card=model.cards[0];
+  const graphId=f.canvas.graphId;
+  const original=JSON.stringify(f.canvas.positions[graphId][card.id]);
+  const nativeCard=cls(f.nodeLayer,"adamantium-capsule-native-card")
+    .find(x=>x.getAttribute("data-instance-id")===card.id);
+  const header=cls(nativeCard,"adamantium-capsule-native-header")[0];
+  header.fire("pointerdown",{clientX:100,clientY:150});
+  f.document.fire("pointermove",{clientX:165,clientY:192});
+  f.document.fire("pointerup",{clientX:165,clientY:192});
+  assert.equal(JSON.stringify(f.canvas.positions[graphId][card.id]),original);
+  assert.match(f.canvas.notice,/Ошибка сохранения/);
+});
+test("post-write notification failure never rolls back already persisted graph",()=>{
+  const f=fixture(null,{notifyFails:true});
+  const before=f.canvas.studio.graph(f.canvas.graphId).instances.length;
+  const result=f.canvas.addCapsule();
+  assert.ok(result?.graphId);
+  assert.equal(f.canvas.studio.graph(f.canvas.graphId).instances.length,before+1);
+  const stored=JSON.parse(f.backing.get(STORAGE_KEY));
+  assert.equal(stored.model.graphs[f.canvas.graphId].instances.length,before+1);
 });
