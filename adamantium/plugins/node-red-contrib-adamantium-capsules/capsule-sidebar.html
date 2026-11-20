@@ -24,6 +24,7 @@
                 const instance = new mod.CapsuleNativeCanvas({
                     doc: document,
                     storage: window.localStorage,
+                    getWorkspaceId: function() { return RED.workspaces.active(); },
                     requestRedraw: function() { RED.view.redraw(false,true); }
                 });
                 RED.hooks.add("viewRedrawCanvas.adamantium-capsules",function(payload){
@@ -52,6 +53,16 @@
                 style.rel = "stylesheet";
                 style.href = new URL(R07_CSS,document.baseURI).href;
                 document.head.appendChild(style);
+            }
+            // The sibling Sidebar iframe writes the same local-only library.
+            // Reload the SVG lens when its storage changes in another document.
+            if (window.addEventListener) {
+                window.addEventListener("storage",function(event){
+                    if (nativeCanvas &&
+                        event.key === "adamantium.capsule-studio.r01") {
+                        nativeCanvas.refresh();
+                    }
+                });
             }
             const content = $("<div>").css({
                 "display": "flex", "flex-direction": "column",
