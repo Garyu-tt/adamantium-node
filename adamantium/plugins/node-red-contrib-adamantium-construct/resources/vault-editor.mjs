@@ -10,7 +10,7 @@ import {
 
 const KEY="adamantium.native-q-vault.r04";
 const sel=(root,id)=>root.querySelector("#"+id);
-const ident=/^[a-z][a-z0-9_.-]{1,63}$/;
+const ident=/^[a-z][a-z0-9_.-]{0,63}$/;
 
 export async function startNativeVault({RED,overlay,core,writable,status,error,refresh,hideDialog}){
   const $=id=>sel(overlay,id);
@@ -36,7 +36,7 @@ export async function startNativeVault({RED,overlay,core,writable,status,error,r
     const value=$("ada-vault-deps").value.trim();
     if(!value)return [];
     return value.split(",").map(part=>{
-      const match=/^([a-z][a-z0-9_.-]{1,63})@([1-9][0-9]?)$/.exec(part.trim());
+      const match=/^([a-z][a-z0-9_.-]{0,63})@([1-9][0-9]?)$/.exec(part.trim());
       if(!match)throw new TypeError("Зависимости: package_id@version через запятую");
       return {id:match[1],version:Number(match[2])};
     });
@@ -61,7 +61,7 @@ export async function startNativeVault({RED,overlay,core,writable,status,error,r
     const id=$("ada-vault-id").value.trim();
     const version=Number($("ada-vault-version").value);
     const title=$("ada-vault-title").value.trim();
-    if(!ident.test(id))throw new TypeError("ID: латинские буквы, цифры, точки и дефисы (от 2 символов)");
+    if(!ident.test(id))throw new TypeError("ID: латинские буквы, цифры, точки и дефисы (от 1 символа)");
     const bp=core.captureSelection(rawNodes);
     const entry={id,version,title,sourceAccess:$("ada-vault-source").value,
       distribution:$("ada-vault-distribution").value,
@@ -76,7 +76,7 @@ export async function startNativeVault({RED,overlay,core,writable,status,error,r
     const value=$("ada-vault-json").value.trim();
     if(!value||value.length>1500000)throw new TypeError("JSON отсутствует или превышает лимит");
     const decoded=await validateVault(JSON.parse(value));
-    if(!window.confirm("Импортировать "+decoded.entries.length+" подписанных контрольными суммами версий из JSON?"))
+    if(!window.confirm("Импортировать "+decoded.entries.length+" проверяемых по SHA-256 версий из JSON?"))
       return;
     await save(await importVault(vault,decoded,{expectedRevision:vault.revision}));
     status("Проверенные версии добавлены локально.");

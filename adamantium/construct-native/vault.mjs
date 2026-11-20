@@ -6,7 +6,7 @@
 import {validateBlueprint,preparePlacement} from "./core.mjs";
 
 export const VAULT_FORMAT="adamantium.construct-vault/1";
-const ID=/^[a-z][a-z0-9_.-]{1,63}$/;
+const ID=/^[a-z][a-z0-9_.-]{0,63}$/;
 const MAX_ENTRIES=64,MAX_VERSIONS=12,MAX_DEPENDENCIES=8,MAX_NODES=64;
 const isObj=x=>x!==null&&typeof x==="object"&&!Array.isArray(x);
 const own=(o,k)=>Object.prototype.hasOwnProperty.call(o,k);
