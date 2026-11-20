@@ -129,7 +129,10 @@ int main() {
       graph.id = read_token(in);
       graph.revision = revision(in);
       graph.domain = domain(read_token(in));
-      graph.schema_version = static_cast<std::uint32_t>(revision(in));
+      const auto schema = revision(in);
+      if (schema > std::numeric_limits<std::uint32_t>::max())
+        throw std::runtime_error("schema version out of range");
+      graph.schema_version = static_cast<std::uint32_t>(schema);
       const auto port_count = count(in, 4096);
       const auto node_count = count(in, 100000);
       const auto edge_count = count(in, 200000);
