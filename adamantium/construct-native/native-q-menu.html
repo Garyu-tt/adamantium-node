@@ -50,6 +50,27 @@ padding:10px;display:grid;gap:8px;align-content:space-between}
 #adamantium-construct-native-overlay .adamantium-construct-window{width:100vw;max-height:100vh;border-radius:0}
 #adamantium-construct-native-overlay .adamantium-construct-cards{max-height:30vh}
 }
+
+
+#adamantium-construct-native-overlay .adamantium-r3-panel{
+ border:1px solid var(--red-ui-secondary-border-color,currentColor);
+ border-radius:9px;padding:10px;
+}
+#adamantium-construct-native-overlay .adamantium-r3-panel summary{cursor:pointer;font-weight:600;padding:3px}
+#adamantium-construct-native-overlay .adamantium-r3-controls{
+ display:flex;align-items:end;gap:8px;flex-wrap:wrap;padding:8px 0;
+}
+#adamantium-construct-native-overlay .adamantium-r3-controls label{display:grid;gap:4px;min-width:110px;flex:1}
+#adamantium-construct-native-overlay .adamantium-r3-controls label.adamantium-r3-cleanup{
+ min-width:200px;align-self:center;display:flex;align-items:center;flex:2
+}
+#adamantium-construct-native-overlay .adamantium-r3-rules{display:grid;gap:5px}
+#adamantium-construct-native-overlay .adamantium-r3-rule{
+ display:flex;justify-content:space-between;align-items:center;gap:7px;
+ border:1px solid var(--red-ui-secondary-border-color,currentColor);
+ padding:6px;border-radius:7px
+}
+#adamantium-construct-native-overlay .adamantium-r3-rule label{display:flex;align-items:center;gap:7px}
 </style>
 <script type="text/javascript">
 (function(){
@@ -58,6 +79,7 @@ const PLUGIN="adamantium-construct-native-r02";
 const ACTION="adamantium:show-native-construct";
 const KEY="adamantium.native-q-library.r02";
 const ASSET="resources/node-red-contrib-adamantium-construct/core.mjs";
+const REACTOR_ASSET="resources/node-red-contrib-adamantium-construct/reactor-editor.mjs";
 const ROOT="adamantium-construct-native-overlay";
 RED.plugins.registerPlugin(PLUGIN,{
   type:"adamantium-editor-overlay",
@@ -91,6 +113,19 @@ RED.plugins.registerPlugin(PLUGIN,{
       "<label><input id='ada-native-auto-tab' type='checkbox'> При новой вкладке автоматически создать сборку</label>",
       "<select id='ada-native-auto-preset' aria-label='Сборка для новой вкладки'></select>",
       "<button type='button' id='ada-native-capsules'>Открыть Capsule Studio</button></div>",
+      "<details id='ada-r3-panel' class='adamantium-r3-panel'>",
+      "<summary>Реактивные правила R03 · создание и безопасная очистка</summary>",
+      "<div class='adamantium-r3-controls'>",
+      "<label>При добавлении<select id='ada-r3-trigger' aria-label='Тип триггера'></select></label>",
+      "<label>Создать<select id='ada-r3-preset' aria-label='Сборка'></select></label>",
+      "<label>Лимит на Flow<select id='ada-r3-max'><option value='1'>1</option><option value='2'>2</option><option value='3'>3</option><option value='4'>4</option></select></label>",
+      "<label class='adamantium-r3-cleanup'><input id='ada-r3-cleanup' type='checkbox'> Автоочистка при удалении исходной ноды (если сборка не менялась)</label>",
+      "<button id='ada-r3-add' type='button'>+ Создать правило</button>",
+      "</div>",
+      "<div id='ada-r3-rules' class='adamantium-r3-rules' aria-live='polite'></div>",
+      "<small id='ada-r3-stats'></small>",
+      "<p>Правила выключены после обновления страницы. Реагируют только на разрешённые типы; без автоматического Deploy.</p>",
+      "</details>",
       "<div id='ada-native-status' class='adamantium-construct-status' role='status'></div>",
       "<small>Копия ≠ общий объект. Subflow — общее определение с отдельным состоянием; ссылка — переход к исходной ноде.</small>",
       "</section>"
@@ -98,7 +133,7 @@ RED.plugins.registerPlugin(PLUGIN,{
     document.body.appendChild(overlay);
     const $=id=>overlay.querySelector("#"+id);
     const cards=$("ada-native-cards");
-    let loaded=null,library=null,tab="builtin",lastFocus=null,working=false,autoBusy=false,corePromise=null;
+    let loaded=null,library=null,tab="builtin",lastFocus=null,working=false,autoBusy=false,corePromise=null,reactorPromise=null;
     const pending=new Set();
     const showError=error=>{
       const value=error?.message||String(error);
@@ -162,7 +197,7 @@ RED.plugins.registerPlugin(PLUGIN,{
       if(tab==="reference")for(const item of library.references)found.push({...item,kind:"reference"});
       return found.filter(e=>(e.title+" "+(e.description||"")).toLowerCase().includes(q)).slice(0,120);
     }
-    async function placeBlueprint(item,automatic=false){
+    async function placeBlueprint(item,automatic=false,origin="adamantium-construct-native-r02"){
       const z=writable();
       await ensureLoaded();
       let nodes;
@@ -180,7 +215,7 @@ RED.plugins.registerPlugin(PLUGIN,{
       if(!automatic)close();
       const result=RED.view.importNodes(nodes,{
         generateIds:true,generateDefaultNames:true,touchImport:automatic,notify:!automatic,
-        eventContext:{source:"adamantium-construct-native-r02",origin:item.id,mode:item.kind}
+        eventContext:{source:origin,origin:item.id,mode:item.kind}
       });
       if(!result?.nodeMap||Object.keys(result.nodeMap).length===0)
         throw new TypeError("Node-RED не подтвердил добавление нод");
@@ -224,11 +259,25 @@ RED.plugins.registerPlugin(PLUGIN,{
       }
       status(entries.length+" элементов · сохранение только локально");
     }
+    async function ensureReactor(){
+      if(!reactorPromise)reactorPromise=import(new URL(REACTOR_ASSET,document.baseURI).href)
+        .then(module=>module.startNativeReactions({
+          RED,overlay,ensureLoaded,
+          buildPreset:async (presetId,origin)=>{
+            const preset=loaded.BUILTINS.find(p=>p.id===presetId);
+            if(!preset)throw new TypeError("Неизвестная реактивная сборка");
+            return placeBlueprint({...preset,kind:"builtin"},true,origin);
+          },
+          writable,renderPalette:render,status,error:showError
+        }));
+      return reactorPromise;
+    }
     async function open(){
       if(working)return;
       working=true;
       try{
         await ensureLoaded();
+        await ensureReactor();
         lastFocus=document.activeElement;
         overlay.hidden=false;render();$("ada-native-search").focus();
       }catch(error){showError(error);}

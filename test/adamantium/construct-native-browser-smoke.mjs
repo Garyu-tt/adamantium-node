@@ -139,9 +139,49 @@ try {
   assert.match(await page.locator("#ada-native-status").innerText(),/заблокирована/);
   assert.equal(await page.evaluate(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length),2);
   await page.evaluate(()=>{RED.nodes.workspace(RED.workspaces.active()).locked=false;});
+  // R03: an explicit rule builds a bounded native preset on a user-created node.
+  await page.locator("#ada-r3-trigger").selectOption("inject");
+  await page.locator("#ada-r3-preset").selectOption("catch_debug");
+  await page.locator("#ada-r3-cleanup").check();
+  await page.locator("#ada-r3-add").click();
+  await page.waitForSelector("#ada-r3-rules input[type=checkbox]");
+  await page.locator("#ada-r3-rules input[type=checkbox]").check();
+  await page.evaluate(()=>document.body.focus());
+  await page.keyboard.press("Escape");
+  await page.evaluate(()=>{
+    const flow=RED.workspaces.active();
+    RED.view.importNodes([{
+      id:"user_trigger",type:"inject",z:flow,x:140,y:280,name:"Reactive source",
+      props:[{p:"payload"}],repeat:"",once:false,onceDelay:0.1,
+      topic:"",payload:"",payloadType:"date",wires:[[]]
+    }],{generateIds:true,touchImport:true,notify:false,eventContext:{source:"palette"}});
+  });
+  await page.waitForFunction(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length===5,
+    null,{timeout:15000});
+  const reaction=await page.evaluate(()=>{
+    const nodes=RED.nodes.filterNodes({z:RED.workspaces.active()});
+    return {types:nodes.map(n=>n.type),
+      sourceId:nodes.find(n=>n.name==="Reactive source")?.id};
+  });
+  assert.ok(reaction.sourceId,"user trigger was imported");
+  assert.equal(reaction.types.filter(t=>t==="catch").length,1);
+  assert.equal(reaction.types.filter(t=>t==="debug").length,2);
+  await page.evaluate(()=>{
+    const source=RED.nodes.filterNodes({z:RED.workspaces.active()})
+      .find(n=>n.name==="Reactive source");
+    RED.view.select({nodes:[source]});
+    RED.actions.invoke("core:delete-selection");
+  });
+  await page.waitForFunction(()=>RED.nodes.filterNodes({z:RED.workspaces.active()}).length===2,
+    null,{timeout:15000});
+  await page.evaluate(()=>document.body.focus());
+  await page.keyboard.press("q");
+  await page.waitForSelector("#adamantium-construct-native-overlay:not([hidden])");
+  await page.evaluate(()=>RED.events.emit("registry:node-type-added","adamantium_browser_test_type"));
+  await page.waitForSelector("#ada-native-cards .adamantium-construct-card");
   assert.equal(new Set(nodes.map(n=>n.id)).size,nodes.length);
   assert.equal(errors.length,0,"browser JS errors: "+errors.join("; "));
-  console.log("NATIVE_Q_SMOKE_OK stamped=8 saved_clone=2 auto_new_tab=2 locked_guard=true builtins="+cards+" port="+port);
+  console.log("NATIVE_Q_SMOKE_OK stamped=8 saved_clone=2 auto_new_tab=2 reactive_add_cleanup=true locked_guard=true builtins="+cards+" port="+port);
 } finally {
   if(browser)await browser.close();
   if(server){
