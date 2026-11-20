@@ -17,7 +17,7 @@ Installing PR #43's plugin directly on the VM122 running R05 would silently remo
 
 Source lineage: R05 PR #33 at `ea3960365884056215a0dcd162636ef81e902d11` plus R07 PR #43 at `8a4ae132408073357eedf0ccd804510ea8b8ad24`.
 
-- Node 24.22.3 in a separate worktree: full `capsule-*.test.mjs` plus Construct suite **95 total: 90 passed, 0 failed, 5 skipped**. Skips require separately installed native C++ G0 validation executable. Do not present them as passes.
+- Node 24.22.3 in a separate worktree: full `capsule-*.test.mjs` plus Construct suite **104 total: 99 passed, 0 failed, 5 skipped**. Skips require separately installed native C++ G0 validation executable. Do not present them as passes.
 - Packaged `capsule-native-layout.mjs`, `capsule-native-canvas.mjs`, `construct-engine.mjs` and preview `app.mjs` are byte-for-byte copies of their canonical source paths.
 - Real Firefox + geckodriver on an **isolated safe-mode** Node-RED 5.0.10, loopback port `1887`, with fresh empty userDir and both R07 Capsule + R03 native Construct editor plugins. No production data.
 - Real Node-RED SVG lens mounted via `RED.actions.invoke("adamantium:toggle-native-canvas")`: 2 cards, 4 ports, 1 wire, `data-runtime="disabled"`; native Node-RED flow remained empty, closing the lens detached all its SVG elements.
@@ -28,6 +28,10 @@ Source lineage: R05 PR #33 at `ea3960365884056215a0dcd162636ef81e902d11` plus R0
 
 - **Draft, not yet rolled out to VM122 main**. Live editor stays on R05 + native Construct R03 and Node-RED adminAuth.
 - Both Capsule variants are `localStorage` editor drafts, not native Node-RED flow nodes, MAS capabilities, language runners, signed Graph Manager decisions or authoritative `mechanicus.universal-graph/1`.
-- PR #46 contains related hardening against hidden-port invalid connections, failed storage saves, stale cross-document writes. This PR does not claim all those protections. Integrate/review those fixes and perform independent QA before production promotion.
+- R08 separately implements best-effort stale localStorage byte checking, a rollback of failed model writes and failed drags, and protection against overwriting a malformed saved draft. It adds adversarial hidden +N wire tests for wrong-direction and mismatched typed connections; these are validated before any visual clipping. These patches were independently tested on VM122. PR #46 is based on a different native R07 implementation; its remaining QA and actual browser regression coverage must still be reconciled before production promotion.
 - Native G0 end-to-end validation has not been executed for this combined branch; 5 native-gated tests are skipped in the VM122 source-only suite.
 - No remote ingress or authorization bypass, no silent plugin installation, no executable graph deploy, no controller lease manipulation, and no JediControl watchdog disruption.
+
+## R08 local draft safety hardening
+
+On VM122 Node 24.22.3, independent local suite after security patch: 104 tests, 99 passed, 0 failed, 5 native G0 skipped. Added four controller tests covering localStorage cross-tab stale writes, quota failure rollback, drag rollback and malformed draft overwrite denial, plus one layout test for forged hidden +N wiring. This is best-effort only: browser localStorage has no atomic multi-document CAS, so authoritative concurrent edits still require Graph Manager.
