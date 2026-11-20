@@ -1,0 +1,90 @@
+/* Adamantium IDE Shell R01. Opt-in styles scoped to the editor document only.
+   Never paint deployed flow nodes or change graph data. Node-RED 5 compatible.
+   Colors remain semantic tokens; restore the stock editor by switching shell off. */
+html[data-adamantium-shell="dark"] {
+  color-scheme: dark;
+  --adi-bg: #0b1220; --adi-surface: #131f30; --adi-surface-raised: #1d2d42;
+  --adi-border: #3c5068; --adi-text: #eff5ff; --adi-muted: #b8c8dc;
+  --adi-accent: #74ead0; --adi-focus: #f3c78f; --adi-danger: #ff9c9c;
+  --red-ui-primary-background-color: var(--adi-bg);
+  --red-ui-secondary-background-color: var(--adi-surface);
+  --red-ui-primary-text-color: var(--adi-text);
+  --red-ui-secondary-text-color: var(--adi-muted);
+  --red-ui-form-input-border-active-color: var(--adi-accent);
+}
+html[data-adamantium-shell="light"] {
+  color-scheme: light;
+  --adi-bg: #f5f8fc; --adi-surface: #fff; --adi-surface-raised: #eaf0f7;
+  --adi-border: #788ba2; --adi-text: #10253b; --adi-muted: #405975;
+  --adi-accent: #006e63; --adi-focus: #865a00; --adi-danger: #a52432;
+  --red-ui-primary-background-color: var(--adi-bg);
+  --red-ui-secondary-background-color: var(--adi-surface);
+  --red-ui-primary-text-color: var(--adi-text);
+  --red-ui-secondary-text-color: var(--adi-muted);
+  --red-ui-form-input-border-active-color: var(--adi-accent);
+}
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) body,
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) #red-ui-workspace {
+  background-color: var(--adi-bg);
+  color: var(--adi-text);
+}
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) .red-ui-header,
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) #red-ui-header,
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) #red-ui-palette,
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) #red-ui-sidebar,
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) .red-ui-sidebar {
+  background: var(--adi-surface);
+  color: var(--adi-text);
+  border-color: var(--adi-border);
+}
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) .red-ui-workspace-tab,
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) .red-ui-sidebar-tab {
+  border-color: var(--adi-border);
+  border-radius: 8px 8px 0 0;
+}
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) :is(button, a, input, textarea, select, [role="button"]):focus-visible {
+  outline: 3px solid var(--adi-focus) !important;
+  outline-offset: 2px;
+}
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) .adamantium-ide-panel {
+  color: var(--adi-text);
+}
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) .adamantium-ide-panel button,
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) .adamantium-ide-command {
+  background: var(--adi-surface-raised);
+  border: 1px solid var(--adi-border);
+  color: var(--adi-text);
+}
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) .adamantium-ide-panel button:hover,
+html[data-adamantium-shell]:not([data-adamantium-shell="off"]) .adamantium-ide-command:hover {
+  border-color: var(--adi-accent);
+}
+/* Focus hides distraction without disabling the keyboard restoration path.
+   Escape, Alt+Shift+F or Ctrl+K > Focus mode always restores it. */
+html[data-adamantium-focus="on"] #red-ui-palette,
+html[data-adamantium-focus="on"] #red-ui-sidebar {
+  opacity: .16; pointer-events: none;
+  transition: opacity 130ms ease;
+}
+html[data-adamantium-density="compact"] .red-ui-sidebar-tab,
+html[data-adamantium-density="compact"] .red-ui-palette-node,
+html[data-adamantium-density="compact"] .red-ui-workspace-tab {padding-block: 2px}
+.adamantium-ide-panel {display:grid;gap:12px;padding:12px;font:14px/1.5 system-ui,sans-serif;min-width:0}
+.adamantium-ide-panel h2{font-size:16px;margin:0}
+.adamantium-ide-panel h3{font-size:13px;margin:0}
+.adamantium-ide-panel p{margin:0}
+.adamantium-ide-panel small{color:var(--adi-muted,#66788d)}
+.adamantium-ide-panel .ad-row{display:flex;flex-wrap:wrap;gap:7px}
+.adamantium-ide-panel button{font:inherit;padding:9px 11px;border-radius:10px;min-height:44px;cursor:pointer}
+.adamantium-ide-panel button[aria-pressed="true"]{border-color:var(--adi-accent,#267f75);box-shadow:inset 0 0 0 1px var(--adi-accent,#267f75)}
+.adamantium-ide-panel .ad-separator{border-top:1px solid var(--adi-border,#7d90a7);padding-top:10px}
+.adamantium-ide-palette{z-index:99999;position:fixed;inset:0;background:rgb(0 0 0 / .60);display:grid;place-items:start center;padding: min(15vh, 110px) 12px 12px}
+.adamantium-ide-palette[hidden]{display:none}
+.adamantium-ide-palette-box{box-sizing:border-box;width:min(550px,100%);max-height:70vh;overflow:auto;background:var(--adi-surface,#172132);color:var(--adi-text,#eff5ff);border:1px solid var(--adi-border,#7d90a7);border-radius:16px;box-shadow:0 18px 70px rgb(0 0 0 / .4);padding:16px}
+.adamantium-ide-palette-title{font:600 15px/1.5 system-ui,sans-serif;margin-bottom:9px}
+.adamantium-ide-palette-input{box-sizing:border-box;width:100%;min-height:44px;border:1px solid var(--adi-border,#7d90a7);background:var(--adi-bg,#0b1220);color:var(--adi-text,#eff5ff);border-radius:9px;padding:10px 12px;font:15px system-ui,sans-serif}
+.adamantium-ide-results{display:grid;gap:6px;margin-top:10px}
+.adamantium-ide-command{width:100%;padding:10px;text-align:left;border-radius:9px;cursor:pointer;font:14px system-ui,sans-serif;min-height:44px}
+.adamantium-ide-command:focus-visible{outline:3px solid var(--adi-focus,#f3c78f)}
+.adamantium-ide-palette-hint{color:var(--adi-muted,#b8c8dc);font:12px/1.5 system-ui,sans-serif;margin-top:10px}
+@media(prefers-reduced-motion:reduce){html[data-adamantium-focus="on"] #red-ui-palette,html[data-adamantium-focus="on"] #red-ui-sidebar{transition:none}}
