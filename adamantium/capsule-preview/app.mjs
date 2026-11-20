@@ -1,10 +1,12 @@
 import {CapsuleStudio,SIDES} from "../capsule-studio.mjs";
+import {extractSelection,CapsuleTemplateLibrary} from "../capsule-extract.mjs";
 
 // Offline authoring preview only: no eval(), worker, process spawn or deployment.
 const STORAGE="adamantium.capsule-studio.r01";
 const $=id=>document.getElementById(id);
 const SIDE_NAMES={north:"Север",east:"Восток",south:"Юг",west:"Запад"};
-let studio,activeGraph,positions={},filter="all",selectedPort=null,editingId=null,exposing=null;
+let studio,library=new CapsuleTemplateLibrary(),activeGraph,positions={},filter="all",selectedPort=null,editingId=null,exposing=null;
+const selected=new Set();
 const expanded=new Set();
 function message(text,error=false) { $("notice").textContent=text;$("notice").dataset.error=String(error); }
 function clamp(value,min,max) { return Math.min(max,Math.max(min,Number(value)||0)); }
@@ -35,6 +37,7 @@ function load() {
   try {
     const data=JSON.parse(localStorage.getItem(STORAGE));
     studio=CapsuleStudio.restore(data.model);
+    library=CapsuleTemplateLibrary.restore(data.templates);
     positions=Object.create(null);
     if(data.positions&&typeof data.positions==="object") for(const [graphId,rows] of Object.entries(data.positions)) {
       if(!studio.graphs[graphId]||!rows||typeof rows!=="object")continue;
@@ -44,12 +47,12 @@ function load() {
       }
     }
   } catch {
-    studio=seed();
+    studio=seed();library=new CapsuleTemplateLibrary();
   }
   activeGraph=studio.rootGraphId;
 }
 function persist() {
-  try { localStorage.setItem(STORAGE,JSON.stringify({model:studio.snapshot(),positions})); }
+  try { localStorage.setItem(STORAGE,JSON.stringify({model:studio.snapshot(),templates:library.snapshot(),positions})); }
   catch { message("Не удалось сохранить локально. Экспортируй JSON.",true); }
 }
 function doAction(action) {
@@ -152,13 +155,13 @@ function addCapsule() {
 function enter(id) {
   doAction(()=>{
     activeGraph=studio.enter(activeGraph,id);
-    selectedPort=null;
+    selected.clear();selectedPort=null;
     message("Внутренний граф. Четыре пограничные карточки возвращают к родителю.");
   });
 }
 function goTo(id) {
   doAction(()=>{
-    studio.graph(id);activeGraph=id;selectedPort=null;
+    studio.graph(id);activeGraph=id;selected.clear();selectedPort=null;
     message("Открыт граф: "+studio.graph(id).title);
   });
 }
@@ -230,13 +233,65 @@ function renderPorts(instance,host) {
     for(const p of studio.resolvePorts(activeGraph,instance.id))host.append(portRow(instance,p));
   }
 }
+
+function extractSelected() {
+  if(!selected.size){message("Сначала отметь ноды Shift+клик по заголовкам.",true);return;}
+  const title=window.prompt("Название извлекаемого компонента","Извлечённый модуль");
+  if(title===null)return;
+  doAction(()=>{
+    const original=activeGraph,chosen=Array.from(selected);
+    const points=chosen.map(id=>position(original,id));
+    const cx=Math.round(points.reduce((s,p)=>s+p.x,0)/points.length);
+    const cy=Math.round(points.reduce((s,p)=>s+p.y,0)/points.length);
+    const result=extractSelection(studio,original,chosen,title);
+    positions[original]??={};
+    positions[original][result.instanceId]={x:cx,y:cy};
+    positions[result.graphId]??={};
+    for(const id of chosen){
+      const p=positions[original][id];
+      if(p)positions[result.graphId][id]={x:p.x,y:p.y};
+      delete positions[original][id];
+    }
+    selected.clear();
+    message("Выделенные ноды извлечены: "+result.interfacePorts+" интерфейсных каналов, связи сохранены.");
+  });
+}
+function saveCurrentTemplate() {
+  if(!studio.graph(activeGraph).parent){
+    message("Для шаблона сначала создай вложенный граф или извлеки выделенные ноды.",true);return;
+  }
+  const title=window.prompt("Имя переиспользуемого шаблона",studio.graph(activeGraph).title);
+  if(title===null)return;
+  doAction(()=>{
+    const result=library.capture(studio,activeGraph,title);
+    message(result.reused?"Эквивалентный шаблон уже есть в библиотеке.":"Граф сохранён как переиспользуемый шаблон.");
+  });
+}
+function addTemplate(templateId,x,y) {
+  doAction(()=>{
+    const inst=library.place(studio,activeGraph,templateId);
+    positions[activeGraph]??={};
+    positions[activeGraph][inst.instanceId]={x:clamp(x??250,65,3500),y:clamp(y??180,70,3000)};
+    message("Создан независимый экземпляр шаблона без копирования исходников микропрограмм.");
+  });
+}
 function nodeElement(i) {
   const node=el("article","node "+i.kind);
   node.dataset.nodeId=i.id;
   const pos=position(activeGraph,i.id);node.style.left=pos.x+"px";node.style.top=pos.y+"px";
+  node.classList.toggle("selected",selected.has(i.id));
   const head=el("div","node-head");
+  head.addEventListener("click",event=>{
+    if(!event.shiftKey)return;
+    if(selected.has(i.id))selected.delete(i.id);else selected.add(i.id);
+    render();
+    message(selected.size+" нод выбрано. Нажми «Извлечь выбранные».");
+  });
   head.append(el("strong","",nodeTitle(i)),el("small","muted",nodeSubtitle(i)));
-  head.addEventListener("dblclick",()=>i.kind==="capsule"?enter(i.id):openDefinition(i.definitionId));
+  head.addEventListener("dblclick",event=>{
+    if(event.shiftKey)return;
+    i.kind==="capsule"?enter(i.id):openDefinition(i.definitionId);
+  });
   drag(head,node,i);
   const body=el("div","node-body");
   renderPorts(i,body);
@@ -318,6 +373,18 @@ function renderPalette() {
     controls.append(button("v+",()=>openDefinition(d.id)));
     details.title=d.description;card.append(details,controls);host.append(card);
   }
+  const templateMatches=filter==="favorites"?[]:library.palette($("search").value).filter(t=>filter!=="used"||t.used>0);
+  for(const t of templateMatches) {
+    const item=el("article","library-item");
+    item.draggable=true;
+    item.addEventListener("dragstart",e=>e.dataTransfer.setData("text/plain",t.id));
+    const detail=el("div","");
+    detail.append(el("div","name",t.name),el("small","muted","◈ Вложенный шаблон · "+t.used+" экземпляров"));
+    item.append(detail,button("↳ +",()=>addTemplate(t.id)));
+    host.append(item);
+  }
+  $("count").textContent=(list.length+templateMatches.length)+" шт.";
+  if(!list.length&&!templateMatches.length)host.append(el("p","muted","По запросу ничего не найдено."));
 }
 function renderBreadcrumbs() {
   const root=$("breadcrumbs");root.replaceChildren();
@@ -330,6 +397,8 @@ function render() {
   renderPalette();renderBreadcrumbs();renderPortals();
   const graph=studio.graph(activeGraph);
   $("nodes").replaceChildren(...graph.instances.map(nodeElement));
+  $("extractSelection").disabled=selected.size===0;
+  $("saveTemplate").disabled=!graph.parent;
   $("graphInfo").textContent=graph.instances.length+" нод · "+graph.edges.length+" соединений · "+graph.boundary.length+" внешних портов";
   renderWires();
 }
@@ -339,6 +408,8 @@ $("exposeForm").addEventListener("submit",submitExposure);
 $("cancelExpose").addEventListener("click",()=>$("exposeDialog").close());
 $("newDefinition").addEventListener("click",()=>openDefinition());
 $("newCapsule").addEventListener("click",addCapsule);
+$("extractSelection").addEventListener("click",extractSelected);
+$("saveTemplate").addEventListener("click",saveCurrentTemplate);
 $("search").addEventListener("input",renderPalette);
 for(const b of document.querySelectorAll("[data-filter]"))b.addEventListener("click",()=>{
   filter=b.dataset.filter;
@@ -349,13 +420,14 @@ $("field").addEventListener("dragover",e=>e.preventDefault());
 $("field").addEventListener("drop",e=>{
   e.preventDefault();
   const id=e.dataTransfer.getData("text/plain");
-  if(!studio.definitions[id])return;
   const rect=$("field").getBoundingClientRect();
-  addInstance(id,e.clientX-rect.left-95,e.clientY-rect.top-25);
+  const x=e.clientX-rect.left-95,y=e.clientY-rect.top-25;
+  if(studio.definitions[id])addInstance(id,x,y);
+  else if(library.templates[id])addTemplate(id,x,y);
 });
 $("export").addEventListener("click",()=>{
   try{
-    const json=JSON.stringify({model:studio.snapshot(),positions},null,2);
+    const json=JSON.stringify({model:studio.snapshot(),templates:library.snapshot(),positions},null,2);
     const url=URL.createObjectURL(new Blob([json],{type:"application/json"}));
     const a=el("a");a.href=url;a.download="adamantium-capsule-studio-r01.json";a.click();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -369,20 +441,21 @@ $("fileInput").addEventListener("change",async e=>{
     if(file.size>5*1024*1024)throw new TypeError("Файл превышает 5 МБ");
     const parsed=JSON.parse(await file.text());
     const restored=CapsuleStudio.restore(parsed.model);
+    const restoredLibrary=CapsuleTemplateLibrary.restore(parsed.templates);
     const safePositions={};
     if(parsed.positions&&typeof parsed.positions==="object")for(const [graphId,rows] of Object.entries(parsed.positions)) {
       if(!restored.graphs[graphId]||!rows||typeof rows!=="object")continue;
       safePositions[graphId]={};
       for(const [id,p] of Object.entries(rows))if(p&&typeof p==="object")safePositions[graphId][id]={x:clamp(p.x,65,3500),y:clamp(p.y,70,3000)};
     }
-    studio=restored;positions=safePositions;activeGraph=studio.rootGraphId;selectedPort=null;
+    studio=restored;library=restoredLibrary;positions=safePositions;activeGraph=studio.rootGraphId;selectedPort=null;selected.clear();
     persist();render();message("Снимок импортирован. Никакой код не запускался.");
   }catch(err){message("Импорт отклонён: "+err.message,true);}
   e.target.value="";
 });
 $("reset").addEventListener("click",()=>{
   if(!window.confirm("Заменить локальную модель демонстрационным графом? Экспортируй важные изменения перед сбросом."))return;
-  studio=seed();activeGraph=studio.rootGraphId;selectedPort=null;
+  studio=seed();library=new CapsuleTemplateLibrary();activeGraph=studio.rootGraphId;selectedPort=null;selected.clear();
   persist();render();message("Демонстрационный граф восстановлен.");
 });
 load();render();
