@@ -25,4 +25,4 @@ jobs:
         with:
           node-version: '22'
       - name: Verify inert projection contracts
-        run: node --test test/adamantium/editor-projection.test.mjs
+        run: node --test test/adamantium/editor-projection.test.mjs test/adamantium/editor-projection-boundary.test.mjs
