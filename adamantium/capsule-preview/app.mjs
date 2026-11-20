@@ -206,7 +206,8 @@ function portRow(instance,p) {
   row.dataset.direction=p.direction;
   const dot=el("span","port-dot");
   const b=button(p.tag+" · "+p.dataType,()=>portClick(instance,p));
-  b.title=p.direction+" / "+p.semantics;
+  b.title=p.tag+" · "+p.dataType+" · "+p.direction+" / "+p.semantics;
+  b.dataset.portTag=p.tag;
   b.dataset.selected=String(selectedPort?.instanceId===instance.id&&selectedPort?.tag===p.tag);
   row.append(dot,b);
   if(studio.graph(activeGraph).parent) {
@@ -221,7 +222,7 @@ function renderPorts(instance,host) {
     const ports=studio.resolvePorts(activeGraph,instance.id);
     for(const side of SIDES) {
       const group=ports.filter(p=>p.side===side),slot=el("div","capsule-side");
-      if(!group.length)continue;
+      slot.dataset.side=side;
       const expandedKey=instance.id+":"+side,limit=expanded.has(expandedKey)?128:4;
       slot.append(el("small","muted",SIDE_NAMES[side]+":"));
       for(const p of group.slice(0,limit))slot.append(portRow(instance,p));
@@ -295,7 +296,11 @@ function nodeElement(i) {
   drag(head,node,i);
   const body=el("div","node-body");
   renderPorts(i,body);
-  if(i.kind==="capsule") body.append(button("Открыть ↗",()=>enter(i.id)));
+  if(i.kind==="capsule"){
+    const center=el("div","capsule-center");
+    center.append(button("Открыть ↗",()=>enter(i.id)));
+    body.append(center);
+  }
   node.append(head,body);
   return node;
 }
@@ -324,16 +329,51 @@ function svg(tag,attrs) {
   for(const [k,v] of Object.entries(attrs))n.setAttribute(k,String(v));
   return n;
 }
+function wireAnchor(instanceId,tag,direction) {
+  const host=$("nodes").querySelectorAll(".node");
+  const node=Array.from(host).find(n=>n.dataset.nodeId===instanceId);
+  if(!node)return null;
+  const port=studio.resolvePorts(activeGraph,instanceId).find(p=>p.tag===tag);
+  if(!port)return null;
+  const side=port.side||(direction==="output"?"east":"west");
+  const buttonNode=Array.from(node.querySelectorAll("[data-port-tag]")).find(b=>b.dataset.portTag===tag);
+  const buttonBox=buttonNode?.getBoundingClientRect()||node.getBoundingClientRect();
+  const box=node.getBoundingClientRect();
+  const field=$("field").getBoundingClientRect();
+  const cx=(buttonBox.left+buttonBox.right)/2-field.left;
+  const cy=(buttonBox.top+buttonBox.bottom)/2-field.top;
+  const directions={north:[0,-1],east:[1,0],south:[0,1],west:[-1,0]};
+  const [dx,dy]=directions[side];
+  return {
+    x:dx<0?box.left-field.left:dx>0?box.right-field.left:cx,
+    y:dy<0?box.top-field.top:dy>0?box.bottom-field.top:cy,
+    dx,dy
+  };
+}
 function renderWires() {
-  const layer=$("wires");layer.replaceChildren();
-  for(const e of studio.graph(activeGraph).edges) {
-    const a=position(activeGraph,e.fromId),b=position(activeGraph,e.toId);
-    const x1=a.x+190,y1=a.y+58,x2=b.x,y2=b.y+58;
-    const bend=Math.max(45,Math.abs(x2-x1)*.4);
-    const curve="M"+x1+" "+y1+" C"+(x1+bend)+" "+y1+","+(x2-bend)+" "+y2+","+x2+" "+y2;
-    const path=svg("path",{d:curve,fill:"none",stroke:"var(--accent)","stroke-width":2});
-    layer.append(path);
-    const text=svg("text",{x:(x1+x2)/2,y:(y1+y2)/2-9,fill:"var(--muted)","text-anchor":"middle","font-size":10});
+  const layer=$("wires"),graph=studio.graph(activeGraph);
+  layer.replaceChildren();
+  const extent=graph.instances.reduce((size,i)=>{
+    const pos=position(activeGraph,i.id);
+    size.width=Math.max(size.width,pos.x+(i.kind==="capsule"?280:190)+180);
+    size.height=Math.max(size.height,pos.y+235);
+    return size;
+  },{width:1100,height:740});
+  $("field").style.width=extent.width+"px";
+  $("field").style.height=extent.height+"px";
+  layer.setAttribute("width",String(extent.width));
+  layer.setAttribute("height",String(extent.height));
+  for(const e of graph.edges) {
+    const a=wireAnchor(e.fromId,e.fromTag,"output");
+    const b=wireAnchor(e.toId,e.toTag,"input");
+    if(!a||!b)continue;
+    const bend=Math.max(38,Math.min(110,Math.hypot(b.x-a.x,b.y-a.y)*.3));
+    const curve="M"+a.x+" "+a.y+
+      " C"+(a.x+a.dx*bend)+" "+(a.y+a.dy*bend)+
+      ","+(b.x-b.dx*bend)+" "+(b.y-b.dy*bend)+
+      ","+b.x+" "+b.y;
+    layer.append(svg("path",{d:curve,fill:"none",stroke:"var(--accent)","stroke-width":2}));
+    const text=svg("text",{x:(a.x+b.x)/2,y:(a.y+b.y)/2-9,fill:"var(--muted)","text-anchor":"middle","font-size":10});
     text.textContent=e.fromTag+" → "+e.toTag;layer.append(text);
   }
 }
