@@ -64,6 +64,7 @@ jobs:
           '@ | Set-Content -Encoding utf8 .g0-env.cjs
           node .g0-env.cjs
       - name: Syntax and end-to-end regression (requires true native G0)
+        shell: bash
         run: |
           node --check adamantium/capsule-native-g0.mjs
           node --test test/adamantium/capsule-*.test.mjs
