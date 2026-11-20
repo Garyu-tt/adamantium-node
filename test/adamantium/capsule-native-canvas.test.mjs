@@ -204,3 +204,61 @@ test("native draft layer intercepts dangerous flow shortcuts and unregisters on 
  controller.close();
  assert.equal(b.listeners.keydown.length,0);
 });
+
+test("R08 native editor refuses stale persisted graph edit rather than losing sidebar changes",()=>{
+ const o=modelWithOpenWire(),b=fakeBrowser(o.data),controller=mountNativeCapsuleWorkspace(b);
+ try{
+  assert.equal(controller.inspect().localConflict,false);
+  const external=JSON.stringify({model:o.studio.snapshot(),positions:o.data.positions,draftRevision:19});
+  b.store.set(STORAGE,external);
+  portHit(b.stage,o.a,"output").emit("click");
+  portHit(b.stage,o.b,"input").emit("click");
+  assert.equal(b.store.get(STORAGE),external,"external editor version remains untouched");
+  assert.equal(controller.inspect().edges,0,"rolled back uncommitted connection");
+  assert.equal(controller.inspect().localConflict,true);
+  b.windowRef.emit("storage",{key:STORAGE});
+  assert.equal(controller.inspect().localRevision,19);
+  assert.equal(controller.inspect().localConflict,false);
+ }finally{controller.close();}
+});
+
+test("R08 pointer drag applies the native SVG inverse CTM at zoom 0.5",()=>{
+ const o=modelWithOpenWire(),b=fakeBrowser(o.data),controller=mountNativeCapsuleWorkspace(b);
+ try{
+  const layer=b.stage.querySelector(".adamantium-native-capsule-layer");
+  layer.ownerSVGElement={
+    createSVGPoint(){
+      return {x:0,y:0,matrixTransform(matrix){
+        return {x:matrix.x(this.x),y:matrix.y(this.y)};
+      }};
+    }
+  };
+  layer.getScreenCTM=()=>({
+    inverse(){return {x:x=>(x-80)/.5,y:y=>(y-100)/.5};}
+  });
+  const handle=b.stage.querySelector('[data-drag-handle="'+o.a+'"]');
+  handle.emit("pointerdown",{clientX:180,clientY:220});
+  b.windowRef.emit("pointermove",{clientX:210,clientY:240});
+  b.windowRef.emit("pointerup",{});
+  const saved=JSON.parse(b.store.get(STORAGE));
+  assert.equal(saved.positions[o.root][o.a].x,180,"30 screen pixels at half zoom = 60 graph pixels");
+  assert.equal(saved.positions[o.root][o.a].y,240);
+  assert.equal(saved.draftRevision,1);
+ }finally{controller.close();}
+});
+
+test("R08 stale external edit during drag reverts only the unsaved pointer position",()=>{
+ const o=modelWithOpenWire(),b=fakeBrowser(o.data),controller=mountNativeCapsuleWorkspace(b);
+ try{
+  const handle=b.stage.querySelector('[data-drag-handle="'+o.a+'"]');
+  handle.emit("pointerdown",{clientX:120,clientY:200});
+  b.windowRef.emit("pointermove",{clientX:190,clientY:230});
+  const external=JSON.stringify({...o.data,draftRevision:12});
+  b.store.set(STORAGE,external);
+  b.windowRef.emit("pointerup",{});
+  assert.equal(b.store.get(STORAGE),external);
+  assert.equal(controller.inspect().localConflict,true);
+  const card=b.stage.querySelector('[data-instance-id="'+o.a+'"]');
+  assert.equal(card.getAttribute("transform"),"translate(120,200)");
+ }finally{controller.close();}
+});

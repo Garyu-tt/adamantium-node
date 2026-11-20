@@ -1,9 +1,11 @@
 import {CapsuleStudio,SIDES} from "../capsule-studio.mjs";
 import {extractSelection,CapsuleTemplateLibrary} from "../capsule-extract.mjs";
 import {createCapsuleIRProposal,inspectCapsuleIRProposal} from "../capsule-ir-proposal.mjs";
+import {CapsuleDraftStorage} from "../capsule-draft-storage.mjs";
 
 // Offline authoring preview only: no eval(), worker, process spawn or deployment.
 const STORAGE="adamantium.capsule-studio.r01";
+const draftStore=new CapsuleDraftStorage({storage:localStorage,key:STORAGE});
 const $=id=>document.getElementById(id);
 const SIDE_NAMES={north:"Север",east:"Восток",south:"Юг",west:"Запад"};
 let studio,library=new CapsuleTemplateLibrary(),activeGraph,positions={},filter="all",selectedPort=null,editingId=null,exposing=null;
@@ -36,7 +38,7 @@ function seed() {
 }
 function load() {
   try {
-    const data=JSON.parse(localStorage.getItem(STORAGE));
+    const {value:data}=draftStore.read();
     studio=CapsuleStudio.restore(data.model);
     library=CapsuleTemplateLibrary.restore(data.templates);
     positions=Object.create(null);
@@ -53,12 +55,22 @@ function load() {
   activeGraph=studio.rootGraphId;
 }
 function persist() {
-  try { localStorage.setItem(STORAGE,JSON.stringify({model:studio.snapshot(),templates:library.snapshot(),positions})); }
-  catch { message("Не удалось сохранить локально. Экспортируй JSON.",true); }
+  // Stale writes from the sidebar must not silently overwrite the native SVG.
+  return draftStore.write({model:studio.snapshot(),templates:library.snapshot(),positions});
 }
 function doAction(action) {
+  const previous={
+    model:studio.snapshot(),templates:library.snapshot(),
+    positions:JSON.parse(JSON.stringify(positions)),activeGraph
+  };
   try { action(); persist(); render(); }
-  catch(err) { message(err.message||String(err),true); }
+  catch(err) {
+    studio=CapsuleStudio.restore(previous.model);
+    library=CapsuleTemplateLibrary.restore(previous.templates);
+    positions=previous.positions;activeGraph=previous.activeGraph;
+    selected.clear();selectedPort=null;
+    render();message(err.message||String(err),true);
+  }
 }
 function position(graphId,id) {
   positions[graphId]??={};
@@ -321,7 +333,17 @@ function drag(handle,node,instance) {
     node.style.left=p.x+"px";node.style.top=p.y+"px";
     renderWires();
   });
-  function done(){if(origin){origin=null;persist();}}
+  function done(){
+    if(!origin)return;
+    const previous=origin;origin=null;
+    try{persist();}
+    catch(err){
+      const p=position(activeGraph,instance.id);
+      p.x=previous.startX;p.y=previous.startY;
+      node.style.left=p.x+"px";node.style.top=p.y+"px";
+      renderWires();message(err.message,true);
+    }
+  }
   handle.addEventListener("pointerup",done);
   handle.addEventListener("pointercancel",done);
 }
@@ -506,13 +528,14 @@ $("fileInput").addEventListener("change",async e=>{
     }
     studio=restored;library=restoredLibrary;positions=safePositions;activeGraph=studio.rootGraphId;selectedPort=null;selected.clear();
     persist();render();message("Снимок импортирован. Никакой код не запускался.");
-  }catch(err){message("Импорт отклонён: "+err.message,true);}
+  }catch(err){load();render();message("Импорт отклонён: "+err.message,true);}
   e.target.value="";
 });
 $("reset").addEventListener("click",()=>{
   if(!window.confirm("Заменить локальную модель демонстрационным графом? Экспортируй важные изменения перед сбросом."))return;
   studio=seed();library=new CapsuleTemplateLibrary();activeGraph=studio.rootGraphId;selectedPort=null;selected.clear();
-  persist();render();message("Демонстрационный граф восстановлен.");
+  try{persist();render();message("Демонстрационный граф восстановлен.");}
+  catch(err){load();render();message(err.message,true);}
 });
 window.addEventListener("storage",event=>{
   if(event.key!==STORAGE)return;
