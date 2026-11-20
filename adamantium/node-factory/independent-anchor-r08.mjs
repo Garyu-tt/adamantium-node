@@ -4,7 +4,7 @@
 // The private key never leaves the local anchor root.
 import {generateKeyPairSync,createHash,createPrivateKey,createPublicKey,sign,verify as edVerify} from 'node:crypto';
 import {mkdir,readFile,writeFile,open,rm,rename,lstat} from 'node:fs/promises';
-import {join,resolve,parse} from 'node:path';
+import {join,resolve,parse,isAbsolute} from 'node:path';
 import {verifyPublicFactoryWitness} from './public-witness-verifier-r07.mjs';
 
 const err=code=>{throw Object.assign(new Error(code),{code});};
@@ -114,7 +114,7 @@ async function atomicView(root,view){
 export class FactoryEvidenceAnchor{
  constructor(root){this.root=resolve(root);}
  static async create(root,{ledgerId,sourceWitnessId,sourceWitnessKeyFingerprint}={}){
-  if(typeof root!=='string'||!root||!token.test(ledgerId||'')||
+  if(typeof root!=='string'||!root||!isAbsolute(root)||!token.test(ledgerId||'')||
    !token.test(sourceWitnessId||'')||!hex.test(sourceWitnessKeyFingerprint||''))
    err('anchor_requires_pinned_policy_and_new_directory');
   const dir=resolve(root);
@@ -138,13 +138,19 @@ export class FactoryEvidenceAnchor{
   await atomicView(dir,status({identity,records:[]}));
   return new FactoryEvidenceAnchor(dir);
  }
- static async open(root,{expectedAnchorFingerprint}={}){
-  if(typeof root!=='string'||!root)err('anchor_root_required');
+ static async open(root,{expectedAnchorFingerprint,trustedSequence,trustedReceiptHash}={}){
+  if(typeof root!=='string'||!root||!isAbsolute(root))err('absolute_anchor_root_required');
   const anchor=new FactoryEvidenceAnchor(root);
-  const {identity}=await readChain(anchor.root);
+  const {identity,records}=await readChain(anchor.root);
   if(expectedAnchorFingerprint!==undefined&&
    identity.anchorKeyFingerprint!==expectedAnchorFingerprint)
    err('untrusted_anchor_public_key');
+  if(trustedSequence!==undefined||trustedReceiptHash!==undefined){
+   if(!Number.isSafeInteger(trustedSequence)||trustedSequence<1||
+      !hex.test(trustedReceiptHash||'')||
+      records.find(r=>r.sequence===trustedSequence)?.receiptHash!==trustedReceiptHash)
+    err('anchor_external_head_mismatch');
+  }
   return anchor;
  }
  async inspect(){
