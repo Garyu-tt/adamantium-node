@@ -182,6 +182,7 @@ export function mountNativeCapsuleWorkspace({
   }
   function pointerMove(event){
     if(!drag)return;
+    if(drag.graphId!==activeGraph){drag=null;return;}
     const p=pointerPoint(event);
     const previous=positions[activeGraph]?.[drag.id]||drag.start;
     positions[activeGraph]??={};
@@ -209,7 +210,7 @@ export function mountNativeCapsuleWorkspace({
       event.preventDefault();
       positions[activeGraph]??={};
       const p=positions[activeGraph][node.id]||{x:node.x,y:node.y};
-      drag={id:node.id,origin:pointerPoint(event),start:{x:p.x,y:p.y}};
+      drag={id:node.id,graphId:activeGraph,origin:pointerPoint(event),start:{x:p.x,y:p.y}};
     });
     if(node.kind==="capsule"){
       header.addEventListener("dblclick",event=>{
