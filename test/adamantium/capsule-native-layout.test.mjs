@@ -97,3 +97,20 @@ test("native interactive projection fails closed for oversized graph",()=>{
  for(let i=0;i<1201;i++)studio.place(root,def.id);
  assert.throws(()=>layoutCapsuleGraph(studio,root),/too many nodes/);
 });
+
+test("hidden +N port cannot conceal a wrong-direction or mismatched typed wire",()=>{
+ const studio=new CapsuleStudio(),root=studio.createGraph("Guarded");
+ const wide=studio.createDefinition({name:"Hidden sources",language:"rust",source:"// display-only",
+  ports:Array.from({length:7},(_,i)=>port("out_"+i,"output"))});
+ const receiver=studio.createDefinition({name:"Receiver",language:"rust",source:"// display-only",
+  ports:[port("in","input","core.text@1"),port("out","output")]});
+ const a=studio.place(root,wide.id),b=studio.place(root,receiver.id);
+ const edges=studio.graph(root).edges;
+ edges.push({id:"forged_wrong_type",fromId:a,fromTag:"out_6",toId:b,toTag:"in",semantics:"data",dataType:"core.json@1"});
+ assert.throws(()=>layoutCapsuleGraph(studio,root),/typed wire contract mismatch/,
+  "collapsed hidden source must be validated before visual clipping");
+ edges.length=0;
+ edges.push({id:"forged_wrong_direction",fromId:a,fromTag:"out_6",toId:b,toTag:"out",semantics:"data",dataType:"core.json@1"});
+ assert.throws(()=>layoutCapsuleGraph(studio,root),/dangling or wrong-direction wire/,
+  "collapsed hidden output must not connect to another output");
+});
