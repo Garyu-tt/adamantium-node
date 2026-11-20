@@ -118,6 +118,8 @@ export class InMemoryCapsuleDraftLedger {
     const response=receipt("applied-local-draft",++this.#sequence,{
       requestId,previousHead,currentHead:this.#head,revision:this.#revision,status:"local-preview"
     });
+    const recorded=this.#requests.get(requestId);
+    if(recorded)this.#requests.set(requestId,{...recorded,result:response});
     return response;
   }
   rollbackLocal({requestId,expectedRevision,expectedHead}) {
