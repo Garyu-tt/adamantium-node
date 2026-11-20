@@ -5,7 +5,7 @@
  */
 import {createHash, createPublicKey, verify} from 'node:crypto';
 import {readFile, realpath, lstat} from 'node:fs/promises';
-import {isAbsolute, resolve, join} from 'node:path';
+import {isAbsolute, resolve, join, dirname} from 'node:path';
 import {Worker} from 'node:worker_threads';
 import {isDeepStrictEqual} from 'node:util';
 
@@ -124,7 +124,13 @@ export class HotWorkerSlot {
       const directory=join(this.root,m.releaseId);
       const file=join(directory,'entry.mjs');
       ensure(!(await lstat(directory)).isSymbolicLink() && !(await lstat(file)).isSymbolicLink(),'symlink release denied');
-      ensure(await realpath(directory)===directory && await realpath(file)===file,'noncanonical release path');
+      // Compare canonical parent relationships, not raw path spellings: Windows
+      // can normalize drive casing and temp aliases differently from join().
+      const canonicalRoot=await realpath(this.root);
+      const canonicalDirectory=await realpath(directory);
+      const canonicalFile=await realpath(file);
+      ensure(dirname(canonicalDirectory)===canonicalRoot && dirname(canonicalFile)===canonicalDirectory,
+        'release escapes configured root');
       const source=await readFile(file);
       ensure(source.length>=1&&source.length<=MAX_SOURCE_BYTES,'source size budget exceeded');
       ensure(sha256(source)===m.sourceSha256,'source digest mismatch');
