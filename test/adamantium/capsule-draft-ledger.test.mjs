@@ -64,8 +64,19 @@ test("wrong revision, duplicate staging and unbound root identity fail closed",(
  const store=new InMemoryCapsuleDraftLedger(createCapsuleIRProposal(studio));
  const status=store.status();
  const next=createCapsuleIRProposal(studio,{revision:2});
+ const inconsistent=structuredClone(next);inconsistent.revision=4;
+ assert.throws(
+  ()=>store.propose({requestId:"r_1",expectedRevision:1,expectedHead:status.head,candidate:inconsistent}),
+  /stale graph within proposal/,
+  "top-level revision drifting from graph revisions must be rejected"
+ );
  const wrong=structuredClone(next);wrong.revision=4;
- assert.throws(()=>store.propose({requestId:"r_1",expectedRevision:1,expectedHead:status.head,candidate:wrong}),/invalid revision|candidate revision/);
+ for(const graph of wrong.graphs)graph.revision=4;
+ assert.throws(
+  ()=>store.propose({requestId:"r_1",expectedRevision:1,expectedHead:status.head,candidate:wrong}),
+  /candidate revision/,
+  "well-formed but nonconsecutive revision must be rejected by local CAS"
+ );
  const missing=structuredClone(next);missing.rootGraphId="missing";
  assert.throws(()=>store.propose({requestId:"r_1",expectedRevision:1,expectedHead:status.head,candidate:missing}),/missing proposal root|root/);
  assert.equal(store.current().rootGraphId,root);
