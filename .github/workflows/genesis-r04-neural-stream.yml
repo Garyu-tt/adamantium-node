@@ -4,6 +4,7 @@ on:
     paths:
       - 'experiments/genesis/r04-*.zip.b64'
       - 'experiments/genesis/r04-manifest.json'
+      - 'experiments/genesis/r04-install-isolated.ps1'
       - 'docs/adamantium/GENESIS-R04-NEURAL-STREAM.md'
       - '.github/workflows/genesis-r04-neural-stream.yml'
   workflow_dispatch:
@@ -75,3 +76,17 @@ jobs:
           assert a['regions']['V1']['changed_synapses']>0
           print('GENESIS R04 isolated 120 ticks, 2646 spikes, acquired overlay OK')
           PY
+
+  windows-installer-parse:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Parse the R04 PowerShell installer without running it
+        shell: pwsh
+        run: |
+          $file = Join-Path $env:GITHUB_WORKSPACE 'experiments/genesis/r04-install-isolated.ps1'
+          $tokens = $null
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile($file,[ref]$tokens,[ref]$errors) | Out-Null
+          if (@($errors).Count -ne 0) { $errors | Format-List; exit 1 }
+          Write-Output 'R04 installer syntax parsed successfully; no commands executed'
