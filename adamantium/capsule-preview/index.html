@@ -42,7 +42,26 @@ h2{font-size:15px;margin:0 0 8px} h3{font-size:13px;margin:0 0 8px}
 #field {position:relative;min-width:1100px;min-height:740px;height:100%}
 #wires {position:absolute;inset:0;overflow:visible;pointer-events:none}
 .node {position:absolute;width:190px;background:var(--panel);border:1px solid var(--border);border-radius:12px;box-shadow:0 3px 14px #0002;user-select:none}
-.node.capsule {border-color:var(--accent);min-height:120px}
+.node.capsule {border-color:var(--accent);width:280px;min-height:172px}
+.node.capsule .node-body {
+  display:grid;grid-template-columns:84px minmax(88px,1fr) 84px;
+  grid-template-rows:auto minmax(60px,auto) auto;gap:5px;padding:8px 5px;min-height:140px;
+}
+.node.capsule .capsule-side {min-width:0}
+.node.capsule .capsule-side[data-side="north"] {grid-column:1/4;grid-row:1}
+.node.capsule .capsule-side[data-side="west"] {grid-column:1;grid-row:2;flex-direction:column}
+.node.capsule .capsule-side[data-side="east"] {grid-column:3;grid-row:2;flex-direction:column}
+.node.capsule .capsule-side[data-side="south"] {grid-column:1/4;grid-row:3}
+.node.capsule .node-port {max-width:100%;min-width:0;justify-content:center}
+.node.capsule .node-port button {max-width:74px;padding:2px 4px}
+.node.capsule .capsule-side[data-side="north"] .node-port button,
+.node.capsule .capsule-side[data-side="south"] .node-port button {max-width:80px}
+.node.capsule .capsule-center {
+  grid-column:2;grid-row:2;display:flex;justify-content:center;align-items:center;
+  min-width:0;overflow:hidden;
+}
+.node.capsule .capsule-center button {padding:6px 4px;font-size:11px;white-space:nowrap}
+
 .node.selected {outline:2px solid var(--warning);outline-offset:3px}
 .node-head {background:var(--raised);padding:10px;border-radius:11px 11px 0 0;cursor:grab}
 .node-head:active{cursor:grabbing}
