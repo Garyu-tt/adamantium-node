@@ -34,6 +34,7 @@ test("local draft ledger verifies optimistic concurrency and records nonauthorit
  assert.equal(applied.action,"applied-local-draft");
  assert.equal(applied.authoritative,false);
  assert.equal(store.status().revision,2);
+ assert.deepEqual(store.propose(req),applied,"identical retry reports applied local state, not a ghost pending draft");
  assert.equal(store.current().graphs.length,2);
  const after=store.status();
  const undone=store.rollbackLocal({requestId:"rollback_1",expectedRevision:after.revision,expectedHead:after.head});
