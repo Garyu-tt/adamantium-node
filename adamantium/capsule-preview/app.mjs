@@ -514,4 +514,10 @@ $("reset").addEventListener("click",()=>{
   studio=seed();library=new CapsuleTemplateLibrary();activeGraph=studio.rootGraphId;selectedPort=null;selected.clear();
   persist();render();message("Демонстрационный граф восстановлен.");
 });
+window.addEventListener("storage",event=>{
+  if(event.key!==STORAGE)return;
+  load();
+  render();
+  message("Синхронизировано с основным SVG-пространством Node-RED.");
+});
 load();render();
