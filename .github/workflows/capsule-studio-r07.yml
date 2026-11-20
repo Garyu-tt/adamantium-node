@@ -13,6 +13,7 @@ on:
       - "adamantium/plugins/node-red-contrib-adamantium-capsules/**"
       - "test/adamantium/capsule-native-*.test.mjs"
       - "test/adamantium/capsule-browser-*"
+      - "test/adamantium/capsule-node-red-editor-cdp.mjs"
       - ".github/workflows/capsule-studio-r07.yml"
   workflow_dispatch:
 permissions:
