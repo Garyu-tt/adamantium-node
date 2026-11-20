@@ -1,0 +1,15 @@
+{
+  "name": "@mechanicus/genesis-live-growth-r06",
+  "version": "0.6.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "description": "CPU-only in-process append-only neuron migration preserving learned state",
+  "scripts": {
+    "test": "node --test test/*.test.cjs r04/test/*.test.cjs vendor/r03/test/*.test.cjs vendor/r05/test/*.test.cjs",
+    "demo": "node cli.cjs"
+  }
+}

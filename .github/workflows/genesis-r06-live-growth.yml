@@ -1,0 +1,53 @@
+name: GENESIS R06 Live Growth
+on:
+  pull_request:
+    paths:
+      - "experiments/genesis/r06/**"
+      - ".github/workflows/genesis-r06-live-growth.yml"
+  workflow_dispatch:
+jobs:
+  cpu-regression:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate R06 source syntax
+        working-directory: experiments/genesis/r06
+        run: |
+          node --check lib/live-growth.cjs
+          node --check lib/session-growth.cjs
+          node --check cli.cjs
+      - name: Run bounded R03-R06 regression suite offline
+        working-directory: experiments/genesis/r06
+        run: npm test
+      - name: Check deterministic postgrowth demo and file safety
+        working-directory: experiments/genesis/r06
+        run: |
+          node cli.cjs demo > /tmp/genesis-r06-report.json
+          python3 - <<'PY'
+          import json
+          s=json.load(open('/tmp/genesis-r06-report.json'))
+          assert s['schema']=='mechanicus.genesis-r06-demo/1'
+          assert s['active_before']==896 and s['active_after']==1024
+          assert s['old_synapses_preserved']==2343
+          assert s['new_synapses']==2981 and s['dropped_synapses']==0
+          assert s['old_delayed_events_migrated']==196
+          assert s['learned_synapses_at_risk_in_naive_recompile']==320
+          assert s['acquired_weights_preserved'] is True
+          assert s['queued_sensory_frames_preserved']==3
+          assert s['snapshots_replay_equal'] is True
+          assert s['genome_unchanged'] is True
+          assert s['sensor_hardware_access'] is False
+          PY
+          mkdir -p /tmp/r06-output-parent
+          node cli.cjs demo --out /tmp/r06-output-parent/run-a > /tmp/r06-create-first.json
+          if node cli.cjs demo --out /tmp/r06-output-parent/run-a >/tmp/r06-duplicate.log 2>&1; then
+            echo "unsafe: duplicate output overwrote existing artifacts" >&2
+            exit 1
+          fi
+          test -s /tmp/r06-output-parent/run-a/growth-evidence.json
+          test -s /tmp/r06-output-parent/run-a/growth-checkpoint.json

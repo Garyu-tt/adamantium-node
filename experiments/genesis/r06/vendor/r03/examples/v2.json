@@ -1,0 +1,111 @@
+{
+  "schema": "mechanicus.neural-region/1",
+  "id": "dante.visual.v2.left",
+  "identity": {
+    "name": "Visual secondary area — synthetic",
+    "profile": "biological-spiking",
+    "classification": "experimental"
+  },
+  "neurons": {
+    "total": 50000,
+    "allocation": "percentages"
+  },
+  "layers": [
+    {
+      "id": "L1",
+      "name": "synthetic population plane",
+      "share": 100,
+      "populations": [
+        {
+          "id": "V2.E",
+          "kind": "excitatory",
+          "share": 0.8,          "cell_model": "LIF",
+          "receptors": [
+            {
+              "type": "AMPA",
+              "compartment": "dendrite"
+            },
+            {
+              "type": "NMDA",
+              "compartment": "dendrite"
+            },
+            {
+              "type": "GABA-A",
+              "compartment": "soma"
+            }
+          ]
+        },
+        {
+          "id": "V2.I",
+          "kind": "inhibitory",
+          "share": 0.2,
+          "cell_model": "LIF",
+          "receptors": [
+            {
+              "type": "AMPA",
+              "compartment": "dendrite"
+            },
+            {
+              "type": "GABA-A",
+              "compartment": "soma"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "projections": [
+    {
+      "id": "V2.p.EI",
+      "source": "V2.E",
+      "target": "V2.I",
+      "rule": {
+        "mode": "probabilistic",
+        "probability": 0.08,
+        "delay_ms": 1,
+        "seed": 42
+      },
+      "quantity": {
+        "kind": "synaptic_contacts"
+      },
+      "synapse_model": "chemical"
+    },
+    {
+      "id": "V2.p.IE",
+      "source": "V2.I",
+      "target": "V2.E",
+      "rule": {
+        "mode": "probabilistic",
+        "probability": 0.08,
+        "delay_ms": 2,
+        "seed": 43
+      },
+      "quantity": {
+        "kind": "synaptic_contacts"
+      },
+      "synapse_model": "chemical"
+    }
+  ],
+  "genome": {
+    "source": {
+      "id": "genesis.dante.visual.v2.left",
+      "revision": 1
+    },
+    "acquired": [],
+    "mutation_bounds": {},
+    "epigenetics": []
+  },
+  "runtime": {
+    "mode": "design-only",
+    "active_budget": 160,
+    "virtual_address_limit": 500000000,
+    "bytes_per_neuron": 64,
+    "bytes_per_synapse": 24
+  },
+  "provenance": {
+    "classification": "experimental",
+    "measured": false,
+    "source_refs": [],
+    "seed": 42
+  }
+}

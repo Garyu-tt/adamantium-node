@@ -1,0 +1,112 @@
+{
+  "schema": "mechanicus.neural-region/1",
+  "id": "dante.thalamus.lgn.left",
+  "identity": {
+    "name": "LGN visual relay — synthetic",
+    "profile": "biological-spiking",
+    "classification": "experimental"
+  },
+  "neurons": {
+    "total": 20000,
+    "allocation": "percentages"
+  },
+  "layers": [
+    {
+      "id": "L1",
+      "name": "synthetic population plane",
+      "share": 100,
+      "populations": [
+        {
+          "id": "LGN.E",
+          "kind": "excitatory",
+          "share": 0.8,
+          "cell_model": "LIF",
+          "receptors": [
+            {
+              "type": "AMPA",
+              "compartment": "dendrite"
+            },
+            {
+              "type": "NMDA",
+              "compartment": "dendrite"
+            },
+            {
+              "type": "GABA-A",
+              "compartment": "soma"
+            }
+          ]
+        },
+        {
+          "id": "LGN.I",
+          "kind": "inhibitory",
+          "share": 0.2,
+          "cell_model": "LIF",
+          "receptors": [
+            {
+              "type": "AMPA",
+              "compartment": "dendrite"
+            },
+            {
+              "type": "GABA-A",
+              "compartment": "soma"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "projections": [
+    {
+      "id": "LGN.p.EI",
+      "source": "LGN.E",
+      "target": "LGN.I",
+      "rule": {
+        "mode": "probabilistic",
+        "probability": 0.08,
+        "delay_ms": 1,
+        "seed": 42
+      },
+      "quantity": {
+        "kind": "synaptic_contacts"
+      },
+      "synapse_model": "chemical"
+    },
+    {
+      "id": "LGN.p.IE",
+      "source": "LGN.I",
+      "target": "LGN.E",
+      "rule": {
+        "mode": "probabilistic",
+        "probability": 0.08,
+        "delay_ms": 2,
+        "seed": 43
+      },
+      "quantity": {
+        "kind": "synaptic_contacts"
+      },
+      "synapse_model": "chemical"
+    }
+  ],
+  "genome": {
+    "source": {
+      "id": "genesis.dante.thalamus.lgn.left",
+      "revision": 1
+    },
+    "acquired": [],
+    "mutation_bounds": {},
+    "epigenetics": []
+  },
+  "runtime": {
+    "mode": "design-only",
+    "active_budget": 128,
+    "virtual_address_limit": 500000000,
+    "bytes_per_neuron": 64,
+    "bytes_per_synapse": 24
+  },
+  "provenance": {
+    "classification": "experimental",
+    "measured": false,
+    "source_refs": [],
+    "seed": 42
+  }
+}
