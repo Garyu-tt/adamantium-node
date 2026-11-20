@@ -28,7 +28,8 @@ The native SVG draft lens provides:
 - adamantium/capsule-preview/app.mjs and its packaged copy — sidebar live storage synchronization.
 - test/adamantium/capsule-native-layout.test.mjs — geometry, cardinal sides, stable tag uniqueness, overflow, nested navigation, bounds.
 - test/adamantium/capsule-native-canvas.test.mjs — isolated fake native SVG DOM, port hit testing, direct SVG connection edits, drag, extract, navigation, storage sync, model isolation and untrusted storage failure.
-- .github/workflows/capsule-studio-r07.yml — cross-platform Node.js 22/24 full suite with the actual pinned C++ G0 build.
+- test/adamantium/capsule-browser-fixture.html and capsule-browser-smoke.mjs — isolated real Chromium browser acceptance on a native SVG event-layer fixture; checks cardinal port geometry, typed click wiring, nested navigation, storage and original Node-RED node sentinel preservation.
+- .github/workflows/capsule-studio-r07.yml — cross-platform Node.js 22/24 full suite with actual pinned C++ G0 build; Ubuntu additionally requires real Chrome/Chromium smoke.
 
 ## Safety and important limitations
 
@@ -38,7 +39,7 @@ The native SVG draft lens provides:
 - Frontend localStorage is not authenticated, transactional shared storage or a security boundary. Never place secrets in microprogram source. Export/import remains untrusted JSON.
 - The native layer uses DOM textContent for user-defined graph titles; no HTML interpretation, eval or dynamic code execution.
 - Designed to safely render up to 1200 visible nodes in one graph. More must be viewed through a narrower query/filter/paged renderer. This limit does not change the underlying Graph IR budgets.
-- Pointer-drag and click-to-connect were tested via Node.js SVG DOM mocks; real browser acceptance and deployment to live Node-RED are distinct QA gates.
+- Pointer drag and click-to-connect were tested in Node.js SVG DOM mocks. A separate **real Chromium 156** fixture also passed SVG cardinal rail placement, click-to-connect, nested navigation and original-flow sentinel retention. This fixture emulates the native event layer; it is **not a full running Node-RED 5 editor acceptance test**.
 - No native flow reload will implicitly change or activate this draft graph. The opaque overlay is removed by the Close button or sidebar toggle.
 - The R07 native SVG layer now intercepts editor pointer events and common destructive keyboard shortcuts (including Delete) while its draft overlay is active, and removes its capturing listener on Close. Browser/extension/OS shortcuts and other editor-specific handlers still require independent real-browser QA before production use.
 
@@ -46,8 +47,9 @@ The native SVG draft lens provides:
 
 Isolated Linux sparse checkout with SHA256-verified official Node.js binaries and the real pinned canonical ToolBox G0 compiled at da55544d738eca138b823175bdbc266a9efb8855:
 
-- Node v22.16.0: **82/82 passed**, 0 skipped, 0 failed.
-- Node v24.11.1: **82/82 passed**, 0 skipped, 0 failed.
+- Node v22.16.0: **83/83 passed**, 0 skipped, 0 failed.
+- Node v24.11.1: **83/83 passed**, 0 skipped, 0 failed.
+- Chromium v156.0.8078.79 extracted into a temporary Linux test directory; `ADAMANTIUM_CHROMIUM_BIN=/absolute/path/chromium node test/adamantium/capsule-browser-smoke.mjs` printed **CAPSULE_NATIVE_BROWSER_OK**. No system browser install, no Windows desktop session or production flow changes.
 
 These include the actual C++17 native G0 acceptance in R06 and the signed durable R05 review inbox. CI results for Windows/Linux R07 must be verified separately after workflow execution.
 
