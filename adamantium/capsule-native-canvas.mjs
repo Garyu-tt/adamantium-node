@@ -398,14 +398,20 @@ export function mountNativeCapsuleWorkspace({
     const target=event.target;
     const tag=String(target?.tagName||"").toLowerCase();
     // Preserve inputs, forms and accessibility navigation outside workspace.
-    if(["input","textarea","select","button"].includes(tag)||
-      target?.isContentEditable||event.key==="Tab"||event.key==="F5"||
+    // The native Construct plugin binds Q on document. A focused toolbar
+    // button must not allow its Q-menu to open over this Capsule lens.
+    // Editable fields still receive text normally.
+    const constructKey=String(event.key||"").toLowerCase()==="q"&&
+      !event.ctrlKey&&!event.metaKey&&!event.altKey;
+    if(["input","textarea","select"].includes(tag)||
+      (tag==="button"&&!constructKey)||target?.isContentEditable||
+      event.key==="Tab"||event.key==="F5"||
       (event.ctrlKey||event.metaKey)&&event.key?.toLowerCase()==="r")return;
     // Native flow Delete / Deploy / clipboard shortcuts must never act on
     // previously selected Node-RED flow nodes behind the Capsule overlay.
     event.stopImmediatePropagation?.();
     event.stopPropagation();
-    if(["Delete","Backspace"," ","Enter"].includes(event.key)||
+    if(constructKey||["Delete","Backspace"," ","Enter"].includes(event.key)||
       event.ctrlKey||event.metaKey)event.preventDefault();
     if(event.key==="Escape"){
       selectedPort=null;selected.clear();render();
