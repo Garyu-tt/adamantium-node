@@ -53,7 +53,7 @@ test("stale CAS and replay under a changed idempotency key are rejected",()=>{
  store.propose({requestId:"new",expectedRevision:1,expectedHead:s.head,candidate:v2});
  const wrong=structuredClone(v2);wrong.mode="execute";
  assert.throws(()=>store.propose({requestId:"new",expectedRevision:1,expectedHead:s.head,candidate:wrong}),/forbidden authority flags/);
- const changed=structuredClone(v2);changed.definitionHandles[0].portCount=99;
+ const changed=structuredClone(v2);changed.graphs[0].domain="interface";
  assert.throws(()=>store.propose({requestId:"new",expectedRevision:1,expectedHead:s.head,candidate:changed}),/idempotency key reused/);
  assert.throws(()=>store.applyLocal({requestId:"new",expectedRevision:1,expectedHead:"wrong"}),/proposal preconditions/);
  assert.equal(store.status().revision,1);
