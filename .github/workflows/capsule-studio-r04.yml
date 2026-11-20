@@ -1,0 +1,36 @@
+name: Adamantium Capsule Studio R04 (signed proposal contract)
+on:
+  push:
+    branches: ["feature/capsules-signed-core-proposal-r04"]
+  pull_request:
+    paths:
+      - "adamantium/capsule-**"
+      - "adamantium/capsule-preview/**"
+      - "adamantium/plugins/node-red-contrib-adamantium-capsules/**"
+      - "test/adamantium/capsule-**"
+      - ".github/workflows/capsule-studio-r04.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signed-proposal-contract:
+    runs-on: ${dollar}{{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ["22", "24"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${dollar}{{ matrix.node }}
+      - name: Syntax
+        shell: bash
+        run: |
+          node --check adamantium/capsule-signed-proposal-bridge.mjs
+          node --check adamantium/capsule-ir-proposal.mjs
+          node --check adamantium/capsule-draft-ledger.mjs
+          node --check adamantium/capsule-preview/app.mjs
+      - name: Contract, adversarial and regression tests
+        run: node --test test/adamantium/capsule-*.test.mjs

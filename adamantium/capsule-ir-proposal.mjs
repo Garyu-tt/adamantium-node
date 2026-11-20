@@ -167,13 +167,23 @@ export function inspectCapsuleIRProposal(proposal) {
     exact(graph,["schema","schemaVersion","id","revision","domain","interfacePorts","nodes","edges"],"IR graph");
     nodeCount+=graph.nodes?.length||0;edgeCount+=graph.edges?.length||0;
     ensure(nodeCount<=100000&&edgeCount<=200000,"total node/edge budget exceeded");
-    for(const p of graph.interfacePorts||[])exact(p,["id","dataType","direction","semantics"],"IR interface port");
+    for(const p of graph.interfacePorts||[]){
+      exact(p,["id","dataType","direction","semantics"],"IR interface port");
+      ensure(SEMANTICS.has(p.semantics),"semantic-only interface is not executable");
+    }
     for(const n of graph.nodes||[]){
       exact(n,["id","kind","typeRef","graphRef","graphRefRevision","ports"],"IR node");
-      for(const p of n.ports||[])exact(p,["id","dataType","direction","semantics"],"IR node port");
+      ensure(n.kind==="service"||n.kind==="composite",
+        "unsupported node kind in inert editor proposal");
+      for(const p of n.ports||[]){
+        exact(p,["id","dataType","direction","semantics"],"IR node port");
+        ensure(SEMANTICS.has(p.semantics),"semantic-only port is not executable");
+      }
     }
-    for(const edge of graph.edges||[])exact(edge,
-      ["id","fromNode","fromPort","toNode","toPort","semantics","delayTicks"],"IR edge");
+    for(const edge of graph.edges||[]){
+      exact(edge,["id","fromNode","fromPort","toNode","toPort","semantics","delayTicks"],"IR edge");
+      ensure(SEMANTICS.has(edge.semantics),"semantic-only edges must never become executable wires");
+    }
     ensure(OBJECT(graph)&&!graphs.has(graph.id),"duplicate/bad graph");
     ensure(graph.revision===proposal.revision,"stale graph within proposal");
     createReadOnlyProjection(graph);
